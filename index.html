@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Коллапс">
+<meta name="description" content="Материнский коллапс: таймер, СЛР, перимортальное КС, дифдиагностика и лечение со ссылками на КР РОАГ и ERC/AHA">
+<title>Материнский коллапс</title>
+<link rel="manifest" id="manifestLink" href="data:application/manifest+json,%7B%7D">
+<link rel="apple-touch-icon" id="appleIcon" href="data:,">
+<style>
+:root{
+  --bg:#ffffff; --fg:#000000; --panel:#efefef; --line:#000000;
+  --red:#b3001b; --on-red:#ffffff;
+  --yel:#ffd100; --on-yel:#000000;
+  --grn:#00703c; --on-grn:#ffffff;
+  --blu:#0047ab; --on-blu:#ffffff;
+  --focus:#0047ab;
+  --bar-h:58px; --tab-h:64px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --fg:#ffffff; --panel:#1c1c1c; --line:#ffffff;
+    --red:#ff5a5f; --on-red:#000000;
+    --yel:#ffd100; --on-yel:#000000;
+    --grn:#3ddc84; --on-grn:#000000;
+    --blu:#7ab8ff; --on-blu:#000000;
+    --focus:#ffd100; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --fg:#ffffff; --panel:#1c1c1c; --line:#ffffff;
+  --red:#ff5a5f; --on-red:#000000;
+  --yel:#ffd100; --on-yel:#000000;
+  --grn:#3ddc84; --on-grn:#000000;
+  --blu:#7ab8ff; --on-blu:#000000;
+  --focus:#ffd100; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:17px/1.42 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-tap-highlight-color:transparent;}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+h1,h2,h3{line-height:1.15;margin:0}
+h2{font-size:24px;font-weight:800;margin:18px 0 10px}
+h3{font-size:18px;font-weight:800;margin:16px 0 8px}
+p{margin:6px 0}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* верхняя панель таймеров */
+#bar{position:fixed;top:0;left:0;right:0;z-index:20;background:var(--bg);border-bottom:3px solid var(--line);
+  padding-top:env(safe-area-inset-top)}
+#bar .cells{display:grid;grid-template-columns:repeat(4,1fr);min-height:var(--bar-h)}
+#bar .cell{padding:4px 6px 5px;border-right:2px solid var(--line);display:flex;flex-direction:column;justify-content:center;min-width:0}
+#bar .cell:last-child{border-right:0}
+#bar .lb{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bar .vl{font-size:24px;font-weight:850;font-variant-numeric:tabular-nums;line-height:1.05;white-space:nowrap}
+#bar .cell.red{background:var(--red);color:var(--on-red)}
+#bar .cell.yel{background:var(--yel);color:var(--on-yel)}
+#bar .cell.grn{background:var(--grn);color:var(--on-grn)}
+#bar .idle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;min-height:var(--bar-h)}
+#bar .idle b{font-size:16px}
+
+main{padding:calc(var(--bar-h) + 14px + env(safe-area-inset-top)) 16px calc(var(--tab-h) + 26px + env(safe-area-inset-bottom));max-width:760px;margin:0 auto}
+main.withfork{padding-bottom:calc(var(--tab-h) + 112px + env(safe-area-inset-bottom))}
+
+/* нижние вкладки */
+#tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--bg);border-top:3px solid var(--line);
+  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
+#tabs button{height:var(--tab-h);border:0;background:transparent;font-size:15px;font-weight:750;border-right:2px solid var(--line);padding:0 2px}
+#tabs button:last-child{border-right:0}
+#tabs button[aria-current="page"]{background:var(--fg);color:var(--bg)}
+
+/* кнопки */
+.btn{display:block;width:100%;min-height:60px;border:3px solid var(--line);background:var(--bg);border-radius:14px;
+  font-size:19px;font-weight:800;padding:10px 14px;text-align:left}
+.btn small{display:block;font-size:14.5px;font-weight:600;margin-top:2px}
+.btn:active{transform:translateY(1px)}
+.b-red{background:var(--red);color:var(--on-red);border-color:var(--red)}
+.b-yel{background:var(--yel);color:var(--on-yel);border-color:var(--yel)}
+.b-grn{background:var(--grn);color:var(--on-grn);border-color:var(--grn)}
+.b-blu{background:var(--blu);color:var(--on-blu);border-color:var(--blu)}
+.b-ink{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn[disabled]{border-style:dashed;cursor:default}
+.mini{min-height:44px;border:2px solid var(--line);background:var(--bg);border-radius:10px;padding:6px 12px;font-weight:750;font-size:16px}
+.mini.on{background:var(--fg);color:var(--bg)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.grid3 .btn{font-size:15.5px;min-height:56px;padding:8px;text-align:center;border-width:2px}
+.stack>*+*{margin-top:10px}
+
+/* старт */
+.start h1{font-size:34px;font-weight:900;letter-spacing:-.01em;margin-top:8px}
+.start .lead{font-size:18px;margin:8px 0 18px}
+.go{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:46vh;border:0;border-radius:28px;
+  background:var(--red);color:var(--on-red);font-size:56px;font-weight:900;letter-spacing:-.01em;box-shadow:inset 0 -10px 0 rgba(0,0,0,.25)}
+.go small{font-size:19px;font-weight:700;margin-top:6px;letter-spacing:0}
+.note{font-size:15px;border-left:5px solid var(--line);padding:6px 10px;margin:16px 0}
+
+/* развилка */
+.fork{position:fixed;left:0;right:0;bottom:calc(var(--tab-h) + 3px + env(safe-area-inset-bottom));z-index:15;background:var(--bg);
+  border-top:3px solid var(--line);padding:8px 10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fork .btn{min-height:84px;font-size:21px;text-align:center}
+
+/* сегменты */
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg .btn{min-height:64px;font-size:16.5px;padding:8px;text-align:center}
+.seg .btn small{font-size:13px}
+.seg .btn.on{background:var(--fg);color:var(--bg)}
+.wt{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.wt label{flex:1 1 100%;font-size:15px}
+.wt input{width:110px;min-height:48px;border:3px solid var(--line);border-radius:10px;padding:6px 10px;font-size:20px;font-weight:800;background:var(--bg)}
+.shift{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:15px;margin:6px 0}
+.shift .mini{min-height:40px;padding:4px 10px;font-size:15px}
+
+/* пункты действий */
+.act{display:grid;grid-template-columns:58px 1fr;gap:10px;padding:12px 0;border-bottom:2px solid var(--line)}
+.act.noc{grid-template-columns:1fr}
+.chk{width:58px;height:58px;border:3px solid var(--line);border-radius:12px;background:var(--bg);font-size:28px;font-weight:900;line-height:1}
+.chk[aria-pressed="true"]{background:var(--grn);color:var(--on-grn);border-color:var(--grn)}
+.act .t{font-weight:700;margin:0}
+.act .d{font-weight:800;margin:6px 0 0;padding:6px 9px;background:var(--panel);border-radius:8px}
+.act .calc{margin:6px 0 0;padding:6px 9px;border:2px dashed var(--line);border-radius:8px;font-weight:700}
+.act .x{font-size:15px;margin:6px 0 0;font-style:italic}
+.src{font-size:14px;margin:6px 0 0}
+.src b{font-weight:800}
+.dv{margin:8px 0 0;padding:7px 10px;background:var(--yel);color:var(--on-yel);border-radius:8px;font-size:15px;font-weight:650}
+.dv b{font-weight:850}
+.when{display:inline-block;margin-top:6px;font-size:14px;font-weight:800;background:var(--grn);color:var(--on-grn);border-radius:6px;padding:1px 7px}
+ul.sig{list-style:none;margin:0;padding:0}
+ul.sig li{padding:9px 0;border-bottom:2px solid var(--line)}
+ul.sig li:last-child{border-bottom:0}
+.box{border:3px solid var(--line);border-radius:14px;padding:4px 14px 10px;margin:14px 0}
+.box>h3{margin-top:12px}
+details{border:3px solid var(--line);border-radius:14px;margin:12px 0;background:var(--bg)}
+details>summary{list-style:none;padding:14px;font-weight:850;font-size:18px;cursor:pointer}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"+";display:inline-block;width:1.2em;font-weight:900}
+details[open]>summary::before{content:"−"}
+details>.in{padding:0 14px 10px}
+
+/* остановка */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 10px}
+.pmcd{border-radius:16px;padding:10px 12px;border:3px solid var(--line);min-width:0}
+.pmcd .big{font-size:clamp(38px,12vw,58px);font-weight:900;line-height:1.02;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pmcd .lbl{font-size:16px;font-weight:850;line-height:1.2;overflow-wrap:anywhere}
+.pmcd .sub{font-size:14px;font-weight:700;margin-top:3px;line-height:1.25}
+.pmcd .txt{font-size:16px;font-weight:750;margin-top:4px;line-height:1.3}
+.pmcd.warn{background:var(--yel);color:var(--on-yel);border-color:var(--yel)}
+.pmcd.now{background:var(--red);color:var(--on-red);border-color:var(--red)}
+.pmcd.ok{background:var(--grn);color:var(--on-grn);border-color:var(--grn)}
+.cyc{border:3px solid var(--line);border-radius:16px;padding:10px 12px;min-width:0}
+.cyc .big{font-size:clamp(38px,12vw,58px);font-weight:900;line-height:1.02;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cyc .lbl{font-size:16px;font-weight:850;line-height:1.2}
+.cyc .sub{font-size:14px;font-weight:700;margin-top:3px}
+.cyc.warn{background:var(--yel);color:var(--on-yel);border-color:var(--yel)}
+.cyc.now{background:var(--red);color:var(--on-red);border-color:var(--red)}
+.prompt{margin:10px 0}
+.prompt p{margin:6px 0;padding:8px 10px;border-radius:10px;font-weight:800}
+.prompt .pr{background:var(--red);color:var(--on-red)}
+.prompt .py{background:var(--yel);color:var(--on-yel)}
+.prompt .pb{border:2px solid var(--line)}
+.rosc{background:var(--grn);color:var(--on-grn);border-radius:16px;padding:12px 14px;margin:6px 0 12px;font-weight:800;font-size:20px}
+@media (prefers-reduced-motion: no-preference){
+  .pulse{animation:pulse 1s steps(2,end) infinite}
+  @keyframes pulse{50%{box-shadow:inset 0 0 0 6px var(--fg)}}
+}
+
+/* причины */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.cause{border:3px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden}
+.cause .cn{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:transparent;padding:10px 12px 4px;font-weight:850;font-size:18px}
+.cause .cn span{display:block;font-size:13.5px;font-weight:650;margin-top:2px}
+.cause .cn i{font-style:normal;font-size:28px;font-weight:900;line-height:1}
+.cause.y{border-color:var(--grn);box-shadow:inset 8px 0 0 var(--grn)}
+.cause.q{border-color:var(--yel);box-shadow:inset 8px 0 0 var(--yel)}
+.cause.n .cn b{text-decoration:line-through;text-decoration-thickness:3px}
+.st3{display:grid;grid-template-columns:1.15fr 1.15fr 1fr;gap:6px;padding:6px 10px 10px}
+.st3 button{min-height:46px;border:2px solid var(--line);border-radius:10px;background:var(--bg);font-size:14px;font-weight:800;padding:4px 2px;white-space:nowrap}
+.st3.solo{padding:8px 0 4px}
+.st3 button.y.on{background:var(--grn);color:var(--on-grn);border-color:var(--grn)}
+.st3 button.q.on{background:var(--yel);color:var(--on-yel);border-color:var(--yel)}
+.st3 button.n.on{background:var(--fg);color:var(--bg)}
+.back{margin-top:4px}
+.sum{font-size:15.5px;font-weight:700;margin:6px 0}
+
+/* журнал */
+ol.log{list-style:none;padding:0;margin:10px 0}
+ol.log li{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:8px 0;border-bottom:2px solid var(--line)}
+ol.log .tm{font-weight:850;font-variant-numeric:tabular-nums;white-space:nowrap}
+ol.log .clk{display:block;font-size:13px;font-weight:600}
+textarea{width:100%;min-height:76px;border:3px solid var(--line);border-radius:12px;padding:10px;background:var(--bg);font-size:17px}
+::placeholder{color:var(--fg);opacity:1;font-style:italic}
+.fallback{width:100%;min-height:220px;font-size:14px}
+
+/* справка */
+.ref dt{font-weight:850;margin-top:12px}
+.ref dd{margin:2px 0 0}
+table.dvt{border-collapse:collapse;width:100%;font-size:15px;margin:6px 0 4px}
+table.dvt td{border:2px solid var(--line);padding:6px 8px;vertical-align:top}
+table.dvt td:first-child{font-weight:800;width:42%}
+
+#toast{position:fixed;left:0;right:0;bottom:calc(var(--tab-h) + 3px + env(safe-area-inset-bottom));z-index:40;background:var(--fg);color:var(--bg);
+  padding:8px 12px;font-weight:800;font-size:15px;display:none;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast.show{display:block}
+.hide{display:none!important}
+@media (min-width:600px){ .seg{grid-template-columns:repeat(3,1fr)} #bar .vl{font-size:28px} }
+@media (max-width:359px){ #bar .vl{font-size:20px} #bar .lb{font-size:11.5px} .grid3{grid-template-columns:1fr 1fr} }
+</style>
+</head>
+<body>
+<header id="bar" aria-live="off"></header>
+<main id="view"></main>
+<div id="forkHost"></div>
+<nav id="tabs" aria-label="Разделы">
+  <button data-a="nav" data-v="first">Шаги</button>
+  <button data-a="nav" data-v="arrest">СЛР</button>
+  <button data-a="nav" data-v="causes">Причины</button>
+  <button data-a="nav" data-v="log">Журнал</button>
+  <button data-a="nav" data-v="more">Ещё</button>
+</nav>
+<div id="toast" role="status" aria-live="polite"></div>
+<script type="application/json" id="kb">{"sources":{"pe":{"kind":"kr","short":"КР ПЭ 2024","full":"КР «Преэклампсия. Эклампсия. Отеки, протеинурия и гипертензивные расстройства во время беременности, в родах и послеродовом периоде». РОАГ. Год утверждения 2024, пересмотр 2026. ID 637."},"prk":{"kind":"kr","short":"КР ПРК 2025","full":"КР «Послеродовое кровотечение». РОАГ, ААР, АААР, МКП. Год утверждения 2025. ID в файле не указан. Файл — скан (OCR), часть цифр распознана с ошибками."},"vte":{"kind":"kr","short":"КР ВТЭО 2025","full":"КР «Венозные осложнения во время беременности и послеродовом периоде. Акушерская тромбоэмболия». РОАГ, ААР, АААР. Год утверждения 2025. ID в файле не указан."},"pio":{"kind":"kr","short":"КР ПИО 2024","full":"КР «Послеродовые инфекционные осложнения». РОАГ, ААР, АААР. Год утверждения 2024, пересмотр не позднее 2026. ID 791."},"ponrp":{"kind":"kr","short":"КР ПОНРП 2024","full":"КР «Преждевременная отслойка плаценты». РОАГ. Год утверждения 2024, пересмотр не позднее 2026. ID 800."},"trauma":{"kind":"kr","short":"КР Травматизм 2023","full":"КР «Разрывы промежности при родоразрешении и другие акушерские травмы (акушерский травматизм)». РОАГ. Год утверждения 2023, пересмотр не позднее 2025 (срок пересмотра истёк). ID 768."},"aje":{"kind":"kr","short":"КР ЭАЖ 2025","full":"КР «Эмболия амниотической жидкостью». РОАГ, ААР. Год утверждения 2025. ID в файле не указан. Содержит раздел о СЛР у беременных (с. 17–20) и чек-лист (Прил. Б1)."},"ch41":{"kind":"book","short":"Глава 41 (учебник)","full":"Дилди Г.А., Белфорт М.А., Кларк С.Л. Глава 41 «Эмболия амниотической жидкостью» // Критические состояния в акушерстве. Учебник, не клинические рекомендации — используется только для дифдиагностики, не для доз."},"ash":{"kind":"krx","short":"КР АШ 2025","full":"КР «Анафилактический шок». Российская ассоциация аллергологов и клинических иммунологов, ФАР. Год утверждения 2025, пересмотр не позднее 2027. ID 263_2. Нет в базе проекта — текст из открытого доступа (rulaws.ru); ссылки — на раздел и номер рекомендации."},"erc_sc":{"kind":"int","short":"ERC 2025 SC","full":"Lott C, Karageorgos V, et al. European Resuscitation Council Guidelines 2025: Special Circumstances in Resuscitation. Resuscitation 2025;215 Suppl 1:110753. doi:10.1016/j.resuscitation.2025.110753"},"erc_als":{"kind":"int","short":"ERC 2025 ALS","full":"Soar J, et al. European Resuscitation Council Guidelines 2025: Adult Advanced Life Support. Resuscitation 2025;215 Suppl 1:110769. doi:10.1016/j.resuscitation.2025.110769"},"erc_bls":{"kind":"int","short":"ERC 2025 BLS","full":"Smyth MA, et al. European Resuscitation Council Guidelines 2025: Adult Basic Life Support (текст по публикации Resuscitation Council UK)."},"aha":{"kind":"int","short":"AHA 2025","full":"American Heart Association 2025. Cardiac Arrest in Pregnancy Algorithm (cpr.heart.org). Основа: Cao D, et al. Part 10: Adult and Pediatric Special Circumstances of Resuscitation: 2025 AHA Guidelines for CPR and ECC. Circulation 2025;152(16_suppl_2):S578–S672."},"smfm":{"kind":"int","short":"SMFM 2016","full":"Society for Maternal-Fetal Medicine (SMFM), Pacheco LD, Saade G, Hankins GDV, Clark SL. Amniotic fluid embolism: diagnosis and management (Clinical Guideline #9). Am J Obstet Gynecol 2016;215:B16–24."},"qrh":{"kind":"int","short":"QRH 3-10 (2023)","full":"Association of Anaesthetists. Quick Reference Handbook 3-10 «Local anaesthetic toxicity», v.2, June 2023."},"nhs":{"kind":"int","short":"NHS Lothian","full":"NHS Lothian (опубликовано NHS Borders, Right Decisions): «High regional or total spinal block». Локальный протокол больницы; дата и версия на странице не указаны."},"rcog":{"kind":"int","short":"RCOG GTG 56","full":"RCOG Green-top Guideline No. 56 «Maternal Collapse in Pregnancy and the Puerperium» (Chu J, Johnston TA, Geoghegan J; BJOG 2020;127:e14–e52). Полный текст из этой среды недоступен (Wiley) — в приложении НЕ цитируется."}},"roag":["pe","prk","vte","pio","ponrp","trauma","aje"],"first":[{"t":"Позвать помощь: акушерская реанимационная бригада — анестезиолог-реаниматолог, акушер-гинеколог, неонатолог, трансфузиолог. Назначить лидера и хронометриста (время вслух каждую минуту).","r":[{"s":"aje","p":17,"sec":"3.1"},{"s":"aje","p":48,"sec":"Прил. Б1"},{"s":"aha","p":null,"sec":null}],"k":1,"q":["врач-анестезиолог-","хронометриста"],"log":"Вызвана реанимационная бригада"},{"t":"Устранить аортокавальную компрессию: при сроке >20 нед (дно матки на уровне пупка и выше) — ручное смещение матки влево, пациентка на спине. Без остановки кровообращения — положение на левом боку.","r":[{"s":"aje","p":19,"sec":"3.1"},{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy"},{"s":"aha","p":null,"sec":null},{"s":"ash","p":null,"sec":"3.1, рек. 10"}],"k":1,"q":["смещением беременной матки максимально влево"],"log":"Смещение матки влево / левый бок"},{"t":"A — проходимость дыхательных путей. Трудные дыхательные пути у беременных часты — обеспечивает самый опытный специалист.","r":[{"s":"aha","p":null,"sec":null}],"k":1,"log":"A: дыхательные пути оценены"},{"t":"B — ЧДД, SpO₂, кислород через лицевую маску; цель SpO₂ 94–98%.","r":[{"s":"prk","p":23,"sec":null},{"s":"aje","p":49,"sec":"Прил. Б1"}],"d":"О₂ 10–15 л/мин (при кровотечении); цель SpO₂ 94–98%","k":1,"log":"B: кислород, SpO₂"},{"t":"C — пульс, АД, ЧСС, ЭКГ-монитор. Два периферических катетера 16G и крупнее, доступ выше диафрагмы. Кровь: группа и совместимость, ОАК, коагулограмма + фибриноген, газы и лактат, K⁺/Ca²⁺, глюкоза.","r":[{"s":"aje","p":16,"sec":"3.1"},{"s":"aje","p":17,"sec":"3.1"},{"s":"prk","p":20,"sec":null},{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy"},{"s":"aha","p":null,"sec":null}],"k":1,"q":["не менее двух периферических","молочной кислоты"],"log":"C: мониторинг, 2 в/в доступа, кровь на анализы"},{"t":"Если в/в доступ не удаётся — внутрикостный.","r":[{"s":"erc_als","p":null,"sec":"Vascular access"},{"s":"aje","p":17,"sec":"3.1"}],"d":"ERC: если в/в не удалось за 2 попытки; КР ЭАЖ: после трёх попыток","div":"Число попыток в/в до перехода на внутрикостный: ERC 2025 — две; КР ЭАЖ 2025 — три.","log":"Внутрикостный доступ"},{"t":"D — сознание (ШКГ), зрачки, судороги, очаговая симптоматика; глюкоза у постели.","r":[{"s":"aje","p":11,"sec":"2.2"}],"k":1,"q":["шкале комы Глазго"],"log":"D: неврологический статус, глюкоза"},{"t":"E — осмотр: наружное и скрытое кровотечение, высота дна, тонус и болезненность матки, выделения, температура, сыпь/отёк, места инъекций, эпидуральный катетер.","r":[{"s":"aje","p":12,"sec":"2.2"}],"k":1,"q":["высота дна матки"],"log":"E: осмотр (кровотечение, матка, кожа)"},{"t":"Катетер в мочевой пузырь — контроль диуреза.","r":[{"s":"aje","p":17,"sec":"3.1"}],"d":"Целевой диурез ≥0,5 мл/кг/ч","c":[{"l":"Диурез ≥","f":0.5,"pu":"мл/кг/ч","u":"мл/ч","dec":0}],"log":"Катетер в мочевой пузырь"}],"stop":[{"t":"Магния сульфат — остановить при признаках токсичности (нет коленных рефлексов, угнетение дыхания) и при остановке кровообращения; кальций — при остановке дыхания или сердца.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"},{"s":"aha","p":null,"sec":null}],"q":["Прекратить инфузию магния сульфата"],"log":"СТОП магния сульфат"},{"t":"Местный анестетик (эпидуральная инфузия, инфильтрация) — остановить при подозрении на ЛАСТ.","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"}],"log":"СТОП местный анестетик"},{"t":"Предполагаемый аллерген (в/в препарат) — остановить, венозный доступ сохранить.","r":[{"s":"ash","p":null,"sec":"3.1, рек. 8"}],"log":"СТОП предполагаемый аллерген"},{"t":"Окситоцин — немедленно остановить при угрожающем, начавшемся или свершившемся разрыве матки.","r":[{"s":"trauma","p":25,"sec":"3.2"}],"q":["немедленно остановить инфузию окситоцина"],"log":"СТОП окситоцин (разрыв матки?)"},{"t":"Любые утеротоники — остановить при вывороте матки.","r":[{"s":"prk","p":77,"sec":"Прил. Б6"}],"q":["Прекратить введение любого утеротонического"],"log":"СТОП утеротоники (выворот матки?)"}],"arrest":{"cpr":[{"t":"Компрессии 100–120/мин, глубина 5–6 см, основание ладони — на нижнюю половину грудины; полное расправление грудной клетки.","r":[{"s":"aje","p":19,"sec":"3.1"},{"s":"erc_bls","p":null,"sec":null},{"s":"smfm","p":null,"sec":"Table 1"}],"k":1,"q":["100-120 в мин, на","глубину 5-6 см"]},{"t":"30:2 до защиты дыхательных путей; после интубации или надгортанного воздуховода — 10 вдохов/мин без пауз в компрессиях.","r":[{"s":"aje","p":19,"sec":"3.1"},{"s":"erc_als","p":null,"sec":"Airway and ventilation"}],"k":1,"q":["30:2"]},{"t":"Смена компрессора каждые 2 минуты.","r":[{"s":"smfm","p":null,"sec":"Table 1"}],"k":1},{"t":"Минимум пауз: заряжать дефибриллятор во время компрессий, пауза на разряд <5 с, сразу продолжить компрессии.","r":[{"s":"erc_als","p":null,"sec":"Defibrillation strategy"}],"k":1},{"t":"Непрерывное ручное смещение матки влево (срок >20 нед / дно матки на уровне пупка и выше).","r":[{"s":"aje","p":19,"sec":"3.1"},{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy"},{"s":"aha","p":null,"sec":null}],"k":1},{"t":"Снять датчики КТГ (не мониторировать плод во время реанимации), клеящиеся электроды; дефибрилляцию не откладывать.","r":[{"s":"aje","p":18,"sec":"3.1"},{"s":"aha","p":null,"sec":null},{"s":"erc_sc","p":null,"sec":"Табл. 1"},{"s":"smfm","p":null,"sec":null}],"k":1,"q":["Не откладывать начало дефибрилляции"]},{"t":"Доступ выше диафрагмы (в/в или внутрикостный). После введения препарата в периферическую вену — промыть ≥20 мл кристаллоида и поднять конечность на 10–20 с.","r":[{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy"},{"s":"aha","p":null,"sec":null},{"s":"aje","p":17,"sec":"3.1"}]},{"t":"Режимы дефибрилляции, препараты и доступ — те же, что вне беременности.","r":[{"s":"aje","p":20,"sec":"3.1"},{"s":"smfm","p":null,"sec":null}],"q":["те же режимы дефибрилляции"]},{"t":"Капнография: подтверждение положения трубки и контроль качества СЛР; резкий рост EtCO₂ — возможное ROSC (не прерывать компрессии только по этому признаку).","r":[{"s":"erc_als","p":null,"sec":"Waveform capnography"},{"s":"aje","p":18,"sec":"3.1"}]},{"t":"Ранняя защита дыхательных путей; интубация — только специалистом с высокой успешностью, с капнографией; пауза компрессий <5 с.","r":[{"s":"aha","p":null,"sec":null},{"s":"erc_als","p":null,"sec":"Airway and ventilation"}]}],"als":[{"t":"Шоковый ритм (ФЖ/ЖТ без пульса): один разряд → сразу 2 мин СЛР → проверка ритма.","r":[{"s":"erc_als","p":null,"sec":"Energy levels and number of shocks"}],"k":1},{"t":"Энергия разряда.","r":[{"s":"erc_als","p":null,"sec":"Energy levels"}],"d":"Бифазный: первый ≥150 Дж; пульсирующий бифазный: 130–150 Дж; далее можно увеличивать; если настройки неизвестны — максимальная энергия","k":1},{"t":"Адреналин 1 мг в/в.","r":[{"s":"erc_als","p":null,"sec":"Vasopressor drugs"}],"d":"Нешоковый ритм — как можно раньше; шоковый — после 3-го разряда; далее каждые 3–5 мин","k":1},{"t":"Амиодарон при ФЖ/ЖТ.","r":[{"s":"erc_als","p":null,"sec":"Antiarrhythmic drugs"}],"d":"300 мг в/в после 3 разрядов; 150 мг после 5 разрядов. Альтернатива — лидокаин 100 мг, затем 50 мг","k":1},{"t":"Рефрактерная ФЖ (после 3 разрядов): сменить вектор — передне-задняя позиция электродов; двойная последовательная дефибрилляция рутинно не рекомендуется.","r":[{"s":"erc_als","p":null,"sec":"Refractory ventricular fibrillation"}]},{"t":"Инфузия во время СЛР — только если причина гиповолемия. Рутинно кальций, натрия гидрокарбонат и ГКС не вводить.","r":[{"s":"erc_als","p":null,"sec":"Fluids; Other medication"}]},{"t":"Если получала магния сульфат — остановить и ввести кальций.","r":[{"s":"aha","p":null,"sec":null},{"s":"pe","p":67,"sec":"Прил. А3.4"},{"s":"pe","p":68,"sec":"Прил. А3.4"}],"d":"10% кальция глюконат 10 мл в/в за 10 мин (КР ПЭ, антидот)","div":"ERC 2025: 10% кальция глюконат 10–30 мл или 10% кальция хлорид 5–10 мл, при необходимости повторно.","k":1,"x":"Для остановки сердца КР ПЭ указывает «ввести кальция глюконат в/в» без отдельной скорости."},{"t":"Подозрение на ЭАЖ — активировать протокол массивной трансфузии.","r":[{"s":"aha","p":null,"sec":null},{"s":"aje","p":48,"sec":"Прил. Б1"}]},{"t":"Подозрение на ТЭЛА — тромболизис; после тромболитика СЛР 60–90 мин.","r":[{"s":"erc_als","p":null,"sec":"Thrombolytic drugs"},{"s":"vte","p":26,"sec":"3.1"}],"div":"КР ВТЭО: СЛР не менее 60 мин; ERC 2025: 60–90 мин."},{"t":"Устранимые причины: 4Г/4Т + акушерские (кровотечение, ЭАЖ, эклампсия, сепсис, анестезиологические, отслойка/разрыв матки, кардиомиопатия) — экран «Причины».","r":[{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy"},{"s":"aha","p":null,"sec":null},{"s":"aje","p":19,"sec":"3.1"}]},{"t":"ECPR — у отобранных пациенток при неэффективности стандартной СЛР, если доступно.","r":[{"s":"erc_als","p":null,"sec":"ECPR"}]}],"pmcd":[{"t":"Готовить реанимационное кесарево сечение сразу с началом СЛР: набор на месте; не перемещать (переход в операционную — только если это займёт ≤2 мин).","r":[{"s":"smfm","p":null,"sec":null},{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy"},{"s":"aje","p":48,"sec":"Прил. Б1"}],"k":1,"q":["за 2 минуты или меньше"]},{"t":"Нет эффекта СЛР в течение 4 мин при сроке >20 нед → родоразрешение (реанимационная гистеротомия).","r":[{"s":"aje","p":18,"sec":"3.1"},{"s":"aje","p":19,"sec":"3.1"},{"s":"aje","p":48,"sec":"Прил. Б1"}],"k":1,"q":["в течение 4 минут при сроке беременности более 20 недель","Если через 4 мин пульс отсутствует"]},{"t":"Цель — извлечение плода к 5-й минуте; критерий — дно матки на уровне пупка и выше.","r":[{"s":"aha","p":null,"sec":null}],"k":1},{"t":"ERC 2025: «5 минут» больше не подчёркивается — подготовка немедленно, выполнять как можно скорее на месте остановки опытной бригадой.","r":[{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy; Табл. 1"}],"k":1},{"t":"ЭАЖ при сроке ≥23 нед — смещение матки влево и немедленное родоразрешение; если на месте невозможно — в операционную, не прекращая СЛР.","r":[{"s":"aje","p":23,"sec":"3.2"},{"s":"smfm","p":null,"sec":"Recommendation 5"}],"q":["в сроке ≥ 23 недель"]},{"t":"Продолжать СЛР и введение препаратов до, во время и после извлечения плода.","r":[{"s":"aje","p":19,"sec":"3.1"}],"q":["как до, так и во время и после извлечения плода"]},{"t":"Минимальная предоперационная подготовка, не ждать эффекта антибиотикопрофилактики.","r":[{"s":"aje","p":48,"sec":"Прил. Б1"}]},{"t":"Новорождённый — реанимация по неонатальному алгоритму (неонатолог).","r":[{"s":"aha","p":null,"sec":null}]}],"rosc":[{"t":"Среднее АД ≥65 мм рт.ст.: жидкость, вазопрессоры, инотропы.","r":[{"s":"smfm","p":null,"sec":"Post-arrest"},{"s":"aje","p":21,"sec":"3.1"}],"k":1},{"t":"SpO₂ 94–98%, избегать 100% O₂.","r":[{"s":"smfm","p":null,"sec":"Post-arrest"},{"s":"aje","p":49,"sec":"Прил. Б1"}],"k":1},{"t":"Глюкоза 140–180 мг/дл; лечить лихорадку.","r":[{"s":"smfm","p":null,"sec":"Post-arrest"}],"x":"140–180 мг/дл ≈ 7,8–10 ммоль/л (пересчёт)"},{"t":"Пока не родоразрешена — сохранять смещение матки влево.","r":[{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy"}]},{"t":"ЭКГ в 12 отведениях: подъём ST → коронарография (и ЧКВ) в течение 120 мин.","r":[{"s":"erc_sc","p":null,"sec":"Coronary thrombosis"}]},{"t":"ЭАЖ / ПЖ-недостаточность — препараты, снижающие давление в лёгочной артерии (см. «ЭАЖ»).","r":[{"s":"aje","p":21,"sec":"3.1"}]},{"t":"Мультидисциплинарная команда, ОРИТ.","r":[{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy"}]}],"duration":[{"t":"После родоразрешения — расширенные реанимационные мероприятия в течение 30 мин (Постановление Правительства РФ № 950).","r":[{"s":"aje","p":20,"sec":"3.1"}],"q":["в течение 30 мин"]},{"t":"После тромболитика — СЛР 60–90 мин (КР ВТЭО — не менее 60 мин).","r":[{"s":"erc_als","p":null,"sec":"Thrombolytic drugs"},{"s":"vte","p":26,"sec":"3.1"}]},{"t":"ЛАСТ — реанимация может длиться >1 ч, рассмотреть ECPR.","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"},{"s":"qrh","p":null,"sec":null}]},{"t":"Гипотермия — согревание ВА-ЭКМО; токсины — быть готовыми к длительной реанимации.","r":[{"s":"erc_sc","p":null,"sec":"Accidental hypothermia; Toxic agents"}]}]},"causes":[{"id":"bleed","name":"Кровотечение / геморрагический шок","grp":"obst","tags":["4Г: гиповолемия","ПРК"],"pro":[{"t":"Видимая кровопотеря; шоковый индекс >1,0 (норма после родов 0,7–0,9).","r":[{"s":"prk","p":18,"sec":"2.5"}]},{"t":"«4Т»: Тонус — матка мягкая, дно выше пупка; Ткань — дефект плаценты; Травма — разрывы, гематома; Тромбин — время свёртывания по Ли-Уайту >7 мин, кровь не сворачивается.","r":[{"s":"prk","p":10,"sec":"1.6"}]},{"t":"Массивная кровопотеря: >1500 мл (25–30% ОЦК) одномоментно или >2500 мл (50% ОЦК) за 3 ч.","r":[{"s":"prk","p":5,"sec":null}]},{"t":"Гипотония выражена, гипоксия ± , коагулопатия +, начало не внезапное, лихорадки нет.","r":[{"s":"aje","p":46,"sec":"Прил. А3.2"},{"s":"ch41","p":7,"sec":"табл. 41.5"}]}],"contra":[{"t":"Шок не соответствует видимой кровопотере → скрытое кровотечение (разрыв матки — кровь в брюшную полость; ретроплацентарная гематома — наружного кровотечения может не быть) или выворот матки (болевой шок, брадикардия).","r":[{"s":"trauma","p":16,"sec":"1.6"},{"s":"ponrp","p":13,"sec":"1.6"},{"s":"prk","p":10,"sec":"1.6"}]},{"t":"Внезапная гипоксия/цианоз и коагулопатия раньше значимой кровопотери → ЭАЖ.","r":[{"s":"aje","p":10,"sec":"1.6"},{"s":"aje","p":46,"sec":"Прил. А3.2"}]}],"check":[{"t":"Учёт кровопотери, шоковый индекс; Hb/Ht, тромбоциты, фибриноген, ПВ/АЧТВ; прикроватный тест Ли-Уайта; ТЭГ/РОТЭМ.","r":[{"s":"prk","p":12,"sec":"2.3"},{"s":"prk","p":18,"sec":"2.5"},{"s":"prk","p":69,"sec":"Прил. А3.3"}]},{"t":"Газы крови, лактат (цель <2 ммоль/л), ионизированный Ca²⁺ (коррекция при <0,9 ммоль/л).","r":[{"s":"prk","p":27,"sec":null},{"s":"prk","p":28,"sec":null}]},{"t":"Осмотр родовых путей, ручное обследование матки; УЗИ органов малого таза при подозрении на разрыв матки после родов.","r":[{"s":"prk","p":20,"sec":null},{"s":"trauma","p":23,"sec":"2.4"}]}],"tx":[{"t":"Вызвать врача, владеющего перевязкой сосудов и гистерэктомией; развернуть операционную.","r":[{"s":"prk","p":20,"sec":"3.1"}],"k":1,"q":["развернуть операционную"]},{"t":"Два периферических катетера 16G и крупнее; горизонтальное положение с поднятым ножным концом; согревание.","r":[{"s":"prk","p":20,"sec":"3.1"}],"k":1,"q":["2 периферических вен","горизонтальное положение с поднятым ножным"]},{"t":"Первая линия: катетер в мочевой пузырь + наружный массаж матки; ручное обследование (однократно), бимануальная компрессия, ушивание разрывов; компрессия аорты — временно.","r":[{"s":"prk","p":20,"sec":"3.1"}],"k":1,"q":["катетеризацию мочевого пузыря и наружный массаж матки","Компрессию аорты"]},{"t":"Окситоцин — первая линия утеротоников.","r":[{"s":"prk","p":20,"sec":"3.1"},{"s":"prk","p":67,"sec":"Прил. А3.1"}],"d":"10–20 МЕ на 500 мл 0,9% NaCl или сбалансированного кристаллоида в/в 125 мл/ч (дозатор); поддерживающая 10 МЕ/500 мл 120 мл/ч; максимум 3 л раствора (60 МЕ) в сутки","k":1},{"t":"#Мизопростол — при неэффективности окситоцина (вне инструкции, решение врачебной комиссии).","r":[{"s":"prk","p":21,"sec":"3.1"},{"s":"prk","p":67,"sec":"Прил. А3.1"}],"d":"800 мкг однократно сублингвально или ректально; эффект через 1–2,5 ч","k":1},{"t":"Внутриматочный баллон — при неэффективности утеротоников.","r":[{"s":"prk","p":21,"sec":"3.1"}],"k":1,"q":["внутриматочного баллона"]},{"t":"Транексамовая кислота.","r":[{"s":"prk","p":28,"sec":"3.1"}],"d":"15 мг/кг (в среднем 1000 мг) в/в за 10 мин (в КР — «при кровопотере до 1000 мл»); при продолжающемся кровотечении — до 4000 мг; повтор через 8 ч","c":[{"l":"ТХА","f":15,"pu":"мг/кг","u":"мг","dec":0}],"k":1},{"t":"Инфузия сразу: тёплые (35–40 °C) сбалансированные кристаллоиды; коллоиды (альбумин, желатин ≤1000 мл); до 30 мл/кг.","r":[{"s":"prk","p":21,"sec":"3.1"},{"s":"prk","p":22,"sec":"3.1"}],"c":[{"l":"Объём","f":30,"pu":"мл/кг","u":"мл","dec":0}],"k":1},{"t":"≥1000 мл после вагинальных родов и кровотечение продолжается и/или шок → быстрая инфузия и в операционную.","r":[{"s":"prk","p":22,"sec":"3.1"}],"k":1},{"t":"Кровопотеря >25–30% ОЦК → решение об операции не позднее 20 мин от диагноза.","r":[{"s":"prk","p":22,"sec":"3.1"}],"k":1},{"t":"Кислород через маску с резервуаром.","r":[{"s":"prk","p":23,"sec":"3.1"}],"d":"10–15 л/мин"},{"t":"Эритроциты: Hb <70 г/л — абсолютное показание; начать не позже 40 мин от диагноза кровотечения.","r":[{"s":"prk","p":23,"sec":"3.1"},{"s":"prk","p":24,"sec":"3.1"}],"k":1},{"t":"Массивная кровопотеря без лабораторных данных → протокол массивной трансфузии.","r":[{"s":"prk","p":24,"sec":"3.1"}],"d":"Эритроциты : СЗП : тромбоконцентрат : криопреципитат = 1:1:1:1; экстренно — эритроциты O(I) Rh−, СЗП AB(IV), криопреципитат без учёта группы","k":1},{"t":"СЗП при коагулопатии/массивной кровопотере, при ПВ/АЧТВ >1,5 нормы; при отслойке и ЭАЖ — как можно раньше.","r":[{"s":"prk","p":24,"sec":"3.1"},{"s":"prk","p":25,"sec":"3.1"}],"d":"15–20 мл/кг","div":"Прил. А3.2 (с. 68): 12–30 мл/кг; Прил. Б4 (с. 75): 12–15 мл/кг.","c":[{"l":"СЗП","f":[15,20],"pu":"мл/кг","u":"мл","dec":0}]},{"t":"Криопреципитат при фибриногене <2 г/л (даже при нормальных ПВ/АЧТВ).","r":[{"s":"prk","p":25,"sec":"3.1"},{"s":"prk","p":75,"sec":"Прил. Б4"}],"d":"1 доза на 5 кг массы тела","div":"Внутри КР ПРК: с. 25 — 1 доза на 5 кг; Прил. Б4 (с. 75) — 1 доза на 10 кг. КР ЭАЖ, Прил. А3.3 (с. 47): #фактор VIII — 1 доза на 10 кг.","c":[{"l":"Криопреципитат (1/5 кг)","f":0.2,"pu":"доз/кг","u":"доз","dec":0},{"l":"Криопреципитат (1/10 кг)","f":0.1,"pu":"доз/кг","u":"доз","dec":0}]},{"t":"Тромбоциты при <50×10⁹/л или <80×10⁹/л на фоне продолжающегося кровотечения.","r":[{"s":"prk","p":26,"sec":"3.1"},{"s":"prk","p":68,"sec":"Прил. А3.2"}],"d":"Тромбоцитарная масса 1 доза/10 кг или тромбоконцентрат 1–2 дозы","c":[{"l":"Тромбоцитарная масса","f":0.1,"pu":"доз/кг","u":"доз","dec":0}]},{"t":"Целевые показатели.","r":[{"s":"prk","p":26,"sec":"3.1"}],"d":"Hb >70 г/л; тромбоциты >50×10⁹/л; ПВ и АЧТВ <1,5 нормы; фибриноген >2 г/л","k":1},{"t":"Нет стабилизации (САД >90, СрАД >65) после 30–40 мл/кг за 1 ч → вазопрессоры (+ инотропы при низком СИ); при декомпенсированном шоке и экстренной операции под общей анестезией — сразу.","r":[{"s":"prk","p":26,"sec":"3.1"},{"s":"prk","p":27,"sec":"3.1"}],"c":[{"l":"30–40 мл/кг","f":[30,40],"pu":"мл/кг","u":"мл","dec":0}],"k":1,"x":"Дозы вазопрессоров в КР ПРК не приведены."},{"t":"Критерии адекватности инфузии.","r":[{"s":"prk","p":27,"sec":"3.1"}],"d":"АД↑ и ЧСС↓ на ≥10%; диурез >30 мл/ч; лактат <2 ммоль/л; симптом бледного пятна <3 с"},{"t":"Ионизированный Ca²⁺ <0,9 ммоль/л при массивной трансфузии → кальция хлорид (доза в КР ПРК не указана).","r":[{"s":"prk","p":28,"sec":"3.1"},{"s":"erc_sc","p":null,"sec":"Табл. 2"}],"d":"ERC 2025 (гипокальциемия, в т.ч. массивная трансфузия): 10% кальция глюконат 10–20 мл за 5–10 мин"},{"t":"Коррекция по ТЭГ/РОТЭМ.","r":[{"s":"prk","p":69,"sec":"Прил. А3.3"}],"d":"FIBTEM A5 <12 мм → фибриноген (криопреципитат); EXTEM CT >80 с → КПК 10–15 МЕ/кг или СЗП 12–15 мл/кг; CT >100 с → КПК 20 МЕ/кг или СЗП 20–30 мл/кг; MCF <45 мм при FIBTEM A5 >12 мм → тромбоциты 1 доза/10 кг; ML >15% → ТХА 15 мг/кг за 10 мин"},{"t":"Протромбиновый комплекс допустим до начала плазмотрансфузии; нет эффекта 20 мин → повтор в той же дозе.","r":[{"s":"prk","p":24,"sec":"3.1"},{"s":"prk","p":25,"sec":"3.1"}]},{"t":"#Эптаког альфа (активированный) — только при неконтролируемом массивном кровотечении; не заменяет хирургию.","r":[{"s":"prk","p":28,"sec":"3.1"},{"s":"prk","p":68,"sec":"Прил. А3.2"}],"d":"≥90 мкг/кг (Прил. А3.2: 90–110 мкг/кг), повтор через 3 ч; менее эффективен при t <34 °C, pH <7,2, тромбоцитах <50×10⁹/л, фибриногене <0,5 г/л","c":[{"l":"Эптаког","f":[90,110],"pu":"мкг/кг","u":"мкг","dec":0}]},{"t":"Хирургический гемостаз: компрессионные швы (при КС); баллон и компрессионные швы — совместно; перевязка/эмболизация; гистерэктомия.","r":[{"s":"prk","p":29,"sec":"3.2"},{"s":"prk","p":30,"sec":"3.2"}],"q":["компрессионных швов"]},{"t":"Анестезия: при геморрагическом шоке препарат выбора для индукции — кетамин; регионарная анестезия — только при кровопотере ≤15% ОЦК (≤1000 мл) и стабильной гемодинамике.","r":[{"s":"prk","p":32,"sec":"3.3"},{"s":"prk","p":33,"sec":"3.3"}],"x":"Дозы для в/в анестезии в КР (кетамин 1–1,5 мг/кг) приведены для пациенток без признаков гиповолемического шока (с. 33)."},{"t":"Остановка при гиповолемии: инфузия во время СЛР (изотонический или сбалансированный кристаллоид).","r":[{"s":"erc_als","p":null,"sec":"Fluids"}]}]},{"id":"abruption","name":"Отслойка плаценты (ПОНРП)","grp":"obst","tags":["антенатально/в родах"],"pro":[{"t":"Боль в матке (у 1/3 отсутствует), гипертонус вплоть до тетании, кровяные выделения (при ретроплацентарной гематоме наружного кровотечения может не быть), дистресс плода, нарастающие шок и ДВС.","r":[{"s":"ponrp","p":13,"sec":"1.6"}]},{"t":"Классическая картина — только у 25%.","r":[{"s":"ponrp","p":13,"sec":"1.6"}]},{"t":"Критерии подозрения: кровяные выделения, боль, гипертонус, нет расслабления между схватками, дистресс плода, снижение АД, тахикардия.","r":[{"s":"ponrp","p":14,"sec":"2"}]}],"contra":[{"t":"УЗИ без гематомы НЕ исключает отслойку: чувствительность 24–57%, специфичность 96–100%.","r":[{"s":"ponrp","p":18,"sec":"2.4"}]}],"check":[{"t":"КТГ/УЗИ плода — но не задерживать экстренное родоразрешение; допплерометрию не проводить до выбора тактики.","r":[{"s":"ponrp","p":18,"sec":"2.4"}]},{"t":"Мониторинг АД, пульса, ЧДД, SpO₂, диуреза — не позднее 10 мин от диагноза; SpO₂ <92% → кислород.","r":[{"s":"ponrp","p":19,"sec":"2.4"}]},{"t":"Коагулограмма/фибриноген — ранняя коагулопатия (СЗП — как можно раньше).","r":[{"s":"prk","p":25,"sec":"3.1"}]}],"tx":[{"t":"Прогрессирующая отслойка, выраженное наружное/внутреннее кровотечение, шок → экстренное КС в интересах матери независимо от состояния плода (в т.ч. при его гибели).","r":[{"s":"ponrp","p":22,"sec":"3.1.3"}],"k":1,"q":["независимо от внутриутробного состояния плода"]},{"t":"Интервал «диагноз → начало операции» — до 30 мин.","r":[{"s":"ponrp","p":22,"sec":"3.1.3"}],"k":1},{"t":"Продолжающееся кровотечение — противопоказание к транспортировке; массивное кровотечение с нестабильностью → оперировать на месте (родзал, палата).","r":[{"s":"ponrp","p":29,"sec":"6"}],"k":1,"q":["противопоказание к транспортировке"]},{"t":"Перед КС — в/в катетер и катетер в мочевой пузырь.","r":[{"s":"ponrp","p":22,"sec":"3.1.3"}]},{"t":"Токолитики/адреномиметики — не применять.","r":[{"s":"ponrp","p":22,"sec":"3.1.2"}],"q":["Не рекомендовано использование адреномиметиков"]},{"t":"При шоке/массивной кровопотере/подозрении на матку Кувелера — нижнесрединная лапаротомия; неонатологи в операционной; готовность к реинфузии крови.","r":[{"s":"ponrp","p":23,"sec":"3.1.3"}],"k":1},{"t":"После извлечения — ревизия матки (Кувелер), утеротоники.","r":[{"s":"ponrp","p":24,"sec":"3.1.3"}],"d":"Окситоцин 5 ЕД (1 мл) в/в медленно за 1–2 мин, или инфузомат 16,2 мл/ч (27 мЕд/мин), или 5 ЕД в 500 мл NaCl 40 кап/мин; карбетоцин 100 мкг в/в медленно за 1 мин (при факторах риска кровотечения)"},{"t":"Продолжающееся кровотечение при неэффективности перевязки/швов/эмболизации или матка Кувелера с кровотечением → вплоть до экстирпации (матка Кувелера — не абсолютное показание).","r":[{"s":"ponrp","p":24,"sec":"3.1.3"}]},{"t":"Роды через естественные пути: ручное отделение плаценты и контроль полости матки.","r":[{"s":"ponrp","p":23,"sec":"3.1.3"}]},{"t":"Кровопотеря и коагулопатия — карточка «Кровотечение»; СЗП — как можно раньше.","r":[{"s":"prk","p":25,"sec":"3.1"}]},{"t":"Остановка кровообращения при сроке >20 нед → реанимационное КС (экран «СЛР»).","r":[{"s":"aje","p":18,"sec":"3.1"}]}]},{"id":"rupture","name":"Разрыв матки","grp":"obst","tags":["в родах/после родов"],"pro":[{"t":"Угрожающий: бурные резко болезненные схватки, матка не расслабляется, контракционное кольцо высоко и косо («песочные часы»), перерастянутый нижний сегмент, затруднено мочеиспускание, дистресс плода. При эпидуральной анальгезии жалоб на боль может не быть.","r":[{"s":"trauma","p":15,"sec":"1.6"},{"s":"trauma","p":16,"sec":"1.6"}]},{"t":"Начавшийся: + болевой шок, кровяные выделения (необязательны), кровь в моче, гипертонус, нарушение сердцебиения плода.","r":[{"s":"trauma","p":16,"sec":"1.6"}]},{"t":"Свершившийся: режущая боль, прекращение родовой деятельности («тишина»), болевой + геморрагический шок, части плода под брюшной стенкой; наружное кровотечение незначительное (кровь в брюшную полость); гипоксия/гибель плода.","r":[{"s":"trauma","p":16,"sec":"1.6"}]},{"t":"После родов: операции на матке в анамнезе, болезненность матки, матка плотная, кровотечение без остатков плаценты.","r":[{"s":"prk","p":10,"sec":"1.6"}]}],"contra":[{"t":"Начавшийся разрыв по признакам близок к отслойке плаценты (гипертонус, нарушение сердцебиения плода, кровяные выделения) — дифференцировать.","r":[{"s":"trauma","p":16,"sec":"1.6"}]}],"check":[{"t":"УЗИ плода (в родах) или органов малого таза (после родов).","r":[{"s":"trauma","p":23,"sec":"2.4"}]},{"t":"Кровь: Hb, коагулограмма, группа — как при кровотечении.","r":[{"s":"prk","p":12,"sec":"2.3"}]}],"tx":[{"t":"Немедленно остановить окситоцин.","r":[{"s":"trauma","p":25,"sec":"3.2"}],"k":1,"q":["немедленно остановить инфузию окситоцина"]},{"t":"Экстренное КС при угрожающем, начавшемся или свершившемся разрыве.","r":[{"s":"trauma","p":28,"sec":"3.3"}],"k":1,"q":["экстренного родоразрешения путем кесарева сечения"]},{"t":"Катетеры 14–16G в вены обеих рук; катетер в мочевой пузырь.","r":[{"s":"trauma","p":28,"sec":"3.3"}],"k":1},{"t":"Объём — после лапаротомии и извлечения плода: ушивание (неполный/линейный разрыв с чёткими краями, нет инфекции, матка сокращается) или экстирпация (полный разрыв с переходом на шейку, травма сосудистого пучка/гематома, продолжающееся кровотечение, не определяется нижний угол).","r":[{"s":"trauma","p":28,"sec":"3.3"},{"s":"trauma","p":29,"sec":"3.3"}],"k":1},{"t":"При полном разрыве — ревизия мочевого пузыря, мочеточников, кишечника; дренирование.","r":[{"s":"trauma","p":29,"sec":"3.3"}]},{"t":"Разрыв шейки III ст. → ручной контроль полости матки; гематома околоматочной клетчатки = разрыв матки → лапаротомия.","r":[{"s":"trauma","p":28,"sec":"3.3"}]},{"t":"Кровопотеря — карточка «Кровотечение».","r":[{"s":"prk","p":22,"sec":"3.1"}]}]},{"id":"inversion","name":"Выворот матки","grp":"obst","tags":["III период/после родов"],"pro":[{"t":"Внезапная сильная боль внизу живота, шок, маточное кровотечение; из половой щели — вывернутая ярко-красная слизистая матки; над лоном матка не пальпируется (воронка).","r":[{"s":"trauma","p":15,"sec":"1.6"},{"s":"trauma","p":19,"sec":"2"}]},{"t":"Болевой шок, не соответствующий кровопотере, брадикардия (вагусная реакция).","r":[{"s":"prk","p":10,"sec":"1.6"}]}],"contra":[{"t":"Неполный выворот — состояние менее тяжёлое, ухудшается медленнее.","r":[{"s":"trauma","p":19,"sec":"2"}]}],"check":[{"t":"Осмотр в зеркалах (при изолированном вывороте матка во влагалище); пальпация над лоном.","r":[{"s":"trauma","p":19,"sec":"2"}]}],"tx":[{"t":"Прекратить любые утеротоники.","r":[{"s":"prk","p":77,"sec":"Прил. Б6"}],"k":1},{"t":"Вызвать опытного акушера-гинеколога и анестезиолога-реаниматолога; венозный доступ, инфузия.","r":[{"s":"prk","p":77,"sec":"Прил. Б6"}],"k":1},{"t":"Вправление сразу после диагноза под общей анестезией; при затруднении — миорелаксация.","r":[{"s":"trauma","p":29,"sec":"3.3"},{"s":"prk","p":77,"sec":"Прил. Б6"}],"k":1,"q":["вправление выворота матки сразу после установления диагноза"]},{"t":"Плаценту до вправления не удалять (если нет врастания — удалять после репозиции).","r":[{"s":"prk","p":77,"sec":"Прил. Б6"}],"k":1},{"t":"Рассечение задней губы шейки → вправление; приём Джонсона (при наличии навыка).","r":[{"s":"prk","p":77,"sec":"Прил. Б6"}]},{"t":"Не удаётся → β-миметики и повтор; затем лапаротомия (процедура Хантингтона + Джонсон).","r":[{"s":"prk","p":77,"sec":"Прил. Б6"}],"x":"Доза β-миметиков в КР не указана."},{"t":"После вправления: рука в полости матки до восстановления тонуса (не более 15 мин); утеротоники; антибиотики профилактически; против рецидива — маточный баллон или компрессионные швы.","r":[{"s":"trauma","p":29,"sec":"3.3"},{"s":"prk","p":77,"sec":"Прил. Б6"}]}]},{"id":"afe","name":"Эмболия амниотической жидкостью (ЭАЖ)","grp":"obst","tags":["4Т: эмболия","роды/≤12 ч"],"pro":[{"t":"Внезапно во время родов, КС или в первые 12 ч после родов.","r":[{"s":"aje","p":10,"sec":"2"}]},{"t":"Сочетание >1 признака: гипотония (САД <90) или остановка сердца; острая гипоксия (одышка, цианоз, SpO₂ <90%); коагулопатия/ДВС/массивное кровотечение без иной причины.","r":[{"s":"aje","p":10,"sec":"2"},{"s":"aje","p":11,"sec":"2"}]},{"t":"Продромы: беспокойство, возбуждение, онемение, ощущение холода, головокружение, боль в груди, нехватка воздуха.","r":[{"s":"aje","p":8,"sec":"1.6"}]},{"t":"Судороги/кома 15–50%; отёк лёгких/ОРДС 93%; атоническое кровотечение 23%; гипоксия плода 100%.","r":[{"s":"aje","p":9,"sec":"1.6"}]},{"t":"ЭхоКГ: правожелудочковая недостаточность — в пользу ЭАЖ (против анафилаксии и большинства имитаторов).","r":[{"s":"aje","p":15,"sec":"2.4"},{"s":"smfm","p":null,"sec":"Differential diagnosis"}]}],"contra":[{"t":"Предшествующая лихорадка, хориоамнионит → сепсис.","r":[{"s":"aje","p":46,"sec":"Прил. А3.2"}]},{"t":"Постепенное начало на фоне кровопотери без выраженной гипоксии → кровотечение.","r":[{"s":"aje","p":46,"sec":"Прил. А3.2"}]},{"t":"Связь с введением анестетика или препарата → ЛАСТ/высокий блок/анафилаксия.","r":[{"s":"aje","p":46,"sec":"Прил. А3.2"},{"s":"ch41","p":7,"sec":"табл. 41.5"}]},{"t":"Диагноз клинический и исключения; специфических лабораторных тестов нет.","r":[{"s":"aje","p":10,"sec":"2"},{"s":"smfm","p":null,"sec":"Recommendation 2"}]}],"check":[{"t":"Коагулограмма (фибриноген, ПТИ, АЧТВ, МНО) и ТЭГ/РОТЭМ — рано.","r":[{"s":"aje","p":12,"sec":"2.3"}]},{"t":"ОАК; КОС и газы крови повторно; лактат; тропонины, натрийуретический пептид.","r":[{"s":"aje","p":13,"sec":"2.3"},{"s":"aje","p":17,"sec":"3.1"}]},{"t":"ЭхоКГ (ТТЭ/ЧПЭ): лёгочная гипертензия, ПЖ-недостаточность — TAPSE (норма >1,7 см), ФВ ПЖ (норма >35%); ЭКГ (перегрузка правых отделов); рентгенография лёгких.","r":[{"s":"aje","p":15,"sec":"2.4"}]},{"t":"Осмотр акушером: выделения, высота дна, тонус, болезненность матки.","r":[{"s":"aje","p":12,"sec":"2.2"}]}],"tx":[{"t":"Остановка: немедленно СЛР; при сроке >20 нед и неэффективности 4 мин → родоразрешение.","r":[{"s":"aje","p":18,"sec":"3.1"}],"k":1,"q":["в течение 4 минут при сроке беременности более 20 недель"]},{"t":"Срок ≥23 нед при остановке: смещение матки влево и немедленное родоразрешение; если на месте нельзя — в операционную, не прекращая СЛР.","r":[{"s":"aje","p":23,"sec":"3.2"},{"s":"smfm","p":null,"sec":"Recommendation 5"}],"div":"Внутри КР ЭАЖ: с. 18–19 — >20 нед и 4 мин СЛР; с. 23 — ≥23 нед, немедленно. SMFM 2016 — ≥23 нед, немедленно.","k":1},{"t":"Команда: анестезиолог-реаниматолог в течение 10 мин, 2 вены, лабораторные пробы, мониторинг; оповестить АДКЦ и ФПЦ.","r":[{"s":"aje","p":17,"sec":"3.1"},{"s":"aje","p":25,"sec":"6"}],"k":1},{"t":"Респираторная поддержка от О₂ до ИВЛ; интубационная трубка 7,0–8,5; протокол трудных ДП; капнометрия.","r":[{"s":"aje","p":18,"sec":"3.1"},{"s":"aje","p":49,"sec":"Прил. Б1"}],"d":"Цель SpO₂ 94–98%","k":1},{"t":"Инфузия: стартово кристаллоиды; избегать перегрузки — болюсы по 500 мл с переоценкой.","r":[{"s":"aje","p":20,"sec":"3.1"},{"s":"aje","p":48,"sec":"Прил. Б1"}],"k":1,"q":["болюсы 500 мл"]},{"t":"Вазопрессоры и инотропы.","r":[{"s":"aje","p":21,"sec":"3.1"},{"s":"aje","p":48,"sec":"Прил. Б1"},{"s":"aje","p":49,"sec":"Прил. Б1"},{"s":"smfm","p":null,"sec":"Table 2"}],"d":"Норэпинефрин 0,05–3,3 мкг/кг/мин; добутамин 2,5–5,0 мкг/кг/мин. Цели: САД >90, СрАД >65 мм рт.ст., СИ >2,0 л/мин/м²","c":[{"l":"Норэпинефрин","f":[0.05,3.3],"pu":"мкг/кг/мин","u":"мкг/мин","dec":1},{"l":"Добутамин","f":[2.5,5],"pu":"мкг/кг/мин","u":"мкг/мин","dec":0}],"k":1},{"t":"Протокол массивной трансфузии сразу; криопреципитат предпочтительнее СЗП (меньше объём); ТЭГ/РОТЭМ.","r":[{"s":"aje","p":48,"sec":"Прил. Б1"},{"s":"aha","p":null,"sec":null}],"k":1,"q":["предпочтительнее СЗП"]},{"t":"Транексамовая кислота.","r":[{"s":"aje","p":48,"sec":"Прил. Б1"},{"s":"aje","p":22,"sec":"3.1"}],"d":"1 г в/в за 10 мин (чек-лист); 15 мг/кг (в среднем 1000 мг) за 10 мин, при продолжающемся кровотечении до 4000 мг, повтор через 8 ч","c":[{"l":"ТХА","f":15,"pu":"мг/кг","u":"мг","dec":0}],"k":1},{"t":"Коагулопатия (Прил. А3.3).","r":[{"s":"aje","p":47,"sec":"Прил. А3.3"}],"d":"СЗП 12–30 мл/кг; #фактор VIII (криопреципитат) 1 доза/10 кг; тромбоцитарная масса 1 доза/10 кг; протромбиновый комплекс ориентировочно 20 МЕ/кг (нет эффекта 20 мин — повтор); #эптаког альфа 90–110 мкг/кг, повтор через 3 ч","c":[{"l":"СЗП","f":[12,30],"pu":"мл/кг","u":"мл","dec":0},{"l":"КПК","f":20,"pu":"МЕ/кг","u":"МЕ","dec":0},{"l":"Криопреципитат","f":0.1,"pu":"доз/кг","u":"доз","dec":0}]},{"t":"Хирургический гемостаз не позднее 20 мин при кровопотере >30% ОЦК; ДВС + шок → лапаротомия как можно быстрее; гистерэктомия — не первичный и не единственный этап.","r":[{"s":"aje","p":22,"sec":"3.2"},{"s":"aje","p":23,"sec":"3.2"}]},{"t":"Утеротоники — профилактика и лечение гипотонии матки.","r":[{"s":"aje","p":23,"sec":"3.2"},{"s":"aje","p":48,"sec":"Прил. Б1"}]},{"t":"Общая анестезия с ИВЛ при массивной кровопотере (кетамин, фентанил — по инструкции).","r":[{"s":"aje","p":24,"sec":"3.3"}]},{"t":"Лёгочные вазодилататоры при ПЖ-недостаточности.","r":[{"s":"aje","p":49,"sec":"Прил. Б1"},{"s":"aje","p":21,"sec":"3.1"},{"s":"smfm","p":null,"sec":"Table 2"}],"d":"NO ингаляционно 5–40 ppm; или илопрост ингаляционно 10–50 нг/кг/мин; или илопрост в/в 1–2 нг/кг/мин (центральная вена); или силденафил 20 мг внутрь/через зонд"},{"t":"Активное согревание: тепловые пушки, одеяла, только подогретые растворы и компоненты крови.","r":[{"s":"aje","p":21,"sec":"3.1"}]},{"t":"ВА-ЭКМО — рассмотреть при длительной СЛР или рефрактерной ПЖ-недостаточности (если есть в учреждении).","r":[{"s":"aje","p":25,"sec":"3.4"}],"div":"SMFM 2016: ЭКМО при ЭАЖ спорна и рутинно не рекомендуется; ERC 2025 ALS: ECPR — у отобранных пациентов."}]},{"id":"eclampsia","name":"Эклампсия / тяжёлая ПЭ / ОНМК","grp":"obst","tags":["4П: преэклампсия"],"pro":[{"t":"Судороги в беременность, в родах или после родов (до 44% — послеродовые); тонико-клонические, обычно ≤1,5–2 мин, затем кома.","r":[{"s":"pe","p":11,"sec":"1.6"}]},{"t":"Предвестники: нарастание головной боли, нарушения зрения, боль в эпигастрии/правом подреберье, возбуждение или сонливость; у 25% — без предвестников.","r":[{"s":"pe","p":11,"sec":"1.6"}]},{"t":"Тяжёлая АГ: САД ≥160 и/или ДАД ≥110 мм рт.ст.","r":[{"s":"pe","p":23,"sec":"3.2"}]}],"contra":[{"t":"Очаговая симптоматика, гемипарез, кома >24 ч после отмены седации, судороги до 20 нед или в первые двое суток после родов, резистентность к Mg → исключить ОНМК/кровоизлияние (КТ/МРТ).","r":[{"s":"pe","p":21,"sec":"2.4"}]},{"t":"Дифдиагноз судорог: инсульт, внутримозговое кровоизлияние/аневризма, тромбоз церебральных вен, опухоль, абсцесс, АВМ, энцефалит/менингит, эпилепсия, препараты, гипонатриемия, гипокалиемия, гипергликемия, ТТП, постпункционный синдром.","r":[{"s":"pe","p":11,"sec":"1.6"},{"s":"pe","p":12,"sec":"1.6"}]},{"t":"Остановка кровообращения и острая тяжёлая коагулопатия для эклампсии нехарактерны.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"}]}],"check":[{"t":"АД, ШКГ, очаговая неврология, SpO₂; глюкоза; Na⁺, K⁺.","r":[{"s":"pe","p":12,"sec":"1.6"}]},{"t":"Тромбоциты, АСТ/АЛТ, ЛДГ (>600 МЕ/л), шизоциты — HELLP/гемолиз.","r":[{"s":"pe","p":12,"sec":"1.6"}]},{"t":"КТ/МРТ головного мозга — по показаниям.","r":[{"s":"pe","p":21,"sec":"2.4"}]}],"tx":[{"t":"Судороги: обеспечить проходимость ДП; без сознания и/или серия приступов → ИВЛ с тотальной миоплегией.","r":[{"s":"pe","p":68,"sec":"Прил. А3.5"}],"k":1,"q":["серии судорожных приступов"]},{"t":"Магния сульфат — первая линия.","r":[{"s":"pe","p":24,"sec":"3.3"},{"s":"pe","p":66,"sec":"Прил. А3.3"}],"d":"Нагрузка 4 г (16 мл 25%) в/в шприцем медленно за 10 мин (разд. 3.3: за 10–15 мин); поддержка 1 г/ч (4 мл/ч 25%) инфузоматом — 24 ч после родов или последнего приступа","k":1},{"t":"Поддерживающая доза по креатинину.","r":[{"s":"pe","p":24,"sec":"3.3"},{"s":"pe","p":25,"sec":"3.3"}],"d":"2 г/ч при креатинине <97 мкмоль/л; 1 г/ч при >97 мкмоль/л"},{"t":"Контроль на магнезии.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"}],"d":"Диурез ежечасно; ЧДД, SpO₂, коленные рефлексы — каждые 10 мин первые 2 ч, затем каждые 30 мин","k":1},{"t":"Тяжёлая АГ (≥160/110): нифедипин или метилдопа внутрь.","r":[{"s":"pe","p":23,"sec":"3.2"},{"s":"pe","p":65,"sec":"Прил. А3.1"}],"d":"Нифедипин 10 мг внутрь, можно повторять каждые 20 мин; сублингвально — противопоказано","k":1},{"t":"Темп снижения АД.","r":[{"s":"pe","p":24,"sec":"3.2"},{"s":"pe","p":26,"sec":"3.6"},{"s":"pe","p":35,"sec":"3.8"}],"d":"До САД 130–140 / ДАД 80–90 мм рт.ст. со скоростью 10–20 мм рт.ст. каждые 10–20 мин; не ниже 110/80; в родах — САД <160 и ДАД <110","k":1},{"t":"Резистентная АГ — урапидил.","r":[{"s":"pe","p":24,"sec":"3.2"}],"x":"Доза урапидила в КР не указана."},{"t":"Отёк лёгких — нитроглицерин в/в.","r":[{"s":"pe","p":27,"sec":"3.6"}],"d":"5 мкг/мин, увеличивать каждые 3–5 мин до максимума 100 мкг/мин","div":"Внутри КР ПЭ: с. 38 — «стартовая доза 5 мг/мин… максимальная 200 мг/мин» (по-видимому, ошибка единиц)."},{"t":"Если Mg противопоказан или неэффективен.","r":[{"s":"pe","p":25,"sec":"3.3"},{"s":"pe","p":26,"sec":"3.3"}],"d":"#Фенитоин 20 мг/кг (макс. 1000 мг) в 100 мл физиологического раствора за 20 мин, через 10 ч 500 мг внутрь; #тиопентал натрия ≤1 мл/мин: 1–2 мл, через 20–30 с остальное, максимум разовая/суточная 1,0 г (50 мл 2%). Бензодиазепины — не рекомендованы (кроме этих случаев)","c":[{"l":"Фенитоин","f":20,"pu":"мг/кг","u":"мг","dec":0,"cap":1000}]},{"t":"Родоразрешение — после стабилизации; при эклампсии и экстренном родоразрешении — общая анестезия (метод выбора).","r":[{"s":"pe","p":36,"sec":"3.9"},{"s":"pe","p":68,"sec":"Прил. А3.5"}],"k":1,"q":["общая анестезия как метод выбора"]},{"t":"Магния сульфат 1 г/ч — не менее 24 ч во время и после родоразрешения.","r":[{"s":"pe","p":35,"sec":"3.8"}]},{"t":"Продлённая ИВЛ: нарушение сознания, кровоизлияние в мозг, коагулопатическое кровотечение, шок, ОРДС/отёк лёгких, нестабильная гемодинамика.","r":[{"s":"pe","p":27,"sec":"3.6"}]},{"t":"ОНМК: КТ/МРТ, невролог/нейрохирург; лечение — по профильным КР (в базе проекта нет).","r":[{"s":"pe","p":21,"sec":"2.4"}]}]},{"id":"hypermag","name":"Гипермагниемия (токсичность MgSO₄)","grp":"obst","tags":["ятрогенная","4Г: метаболические"],"pro":[{"t":"Инфузия магния сульфата; олигурия (диурез <35 мл/ч за 4 ч), снижение функции почек.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"},{"s":"erc_sc","p":null,"sec":"Табл. 2"}]},{"t":"Ощущение тепла, приливы, двоение; невнятная речь — 3,8–5,0 ммоль/л; нет сухожильных рефлексов — >5,0; угнетение дыхания — >6,0; остановка дыхания — 6,3–7,1; остановка сердца — >12,0 ммоль/л.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"}]},{"t":"Спутанность, вялый паралич, угнетение дыхания, гипотония, AV-блокада; ЭКГ: удлинение PR и QT.","r":[{"s":"erc_sc","p":null,"sec":"Табл. 2"}]}],"contra":[{"t":"Магний не вводился и функция почек сохранна (причины гипермагниемии — ятрогенная, почечная недостаточность).","r":[{"s":"erc_sc","p":null,"sec":"Табл. 2"}]}],"check":[{"t":"Уровень Mg: при ЧДД <16/мин, диурезе <35 мл/ч за 4 ч, снижении коленных рефлексов, рецидиве судорог. Терапевтический уровень 2,0–4,0 ммоль/л.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"}]},{"t":"Коленные рефлексы, ЧДД, SpO₂, диурез; креатинин; ЭКГ.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"},{"s":"erc_sc","p":null,"sec":"Табл. 2"}]}],"tx":[{"t":"Нет коленных рефлексов → прекратить инфузию магния сульфата до их восстановления.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"}],"k":1,"q":["до восстановления коленных рефлексов"]},{"t":"Угнетение дыхания → стоп магний; кислород через маску; безопасное положение; тщательный мониторинг.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"}],"k":1},{"t":"Остановка дыхания → стоп магний; кальция глюконат в/в; немедленная интубация и ИВЛ.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"}],"k":1,"q":["Немедленная интубация"]},{"t":"Антидот — кальций.","r":[{"s":"pe","p":68,"sec":"Прил. А3.4"}],"d":"10% #кальция глюконат 10 мл в/в в течение 10 мин","div":"ERC 2025 (табл. 2): при Mg >1,75 ммоль/л — 10% кальция глюконат 10–30 мл или 10% кальция хлорид 5–10 мл в/в, при необходимости повторно.","k":1},{"t":"Остановка сердца → СЛР; стоп магний; кальция глюконат в/в; интубация и ИВЛ; немедленное родоразрешение.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"},{"s":"pe","p":68,"sec":"Прил. А3.4"},{"s":"aha","p":null,"sec":null}],"k":1,"q":["Немедленное родоразрешение"]},{"t":"Диурез <100 мл за 4 ч без симптомов токсичности → снизить до 0,5 г/ч; оценить суммарную дозу магния, баланс жидкости и кровопотерю.","r":[{"s":"pe","p":67,"sec":"Прил. А3.4"}]},{"t":"Выведение магния.","r":[{"s":"erc_sc","p":null,"sec":"Табл. 2"}],"d":"Солевой диурез: 0,9% NaCl 150 мл/ч + фуросемид 1 мг/кг в/в; гемодиализ при нарушении функции почек/тяжёлых симптомах; ИВЛ при необходимости","c":[{"l":"Фуросемид","f":1,"pu":"мг/кг","u":"мг","dec":0}]}]},{"id":"sepsis","name":"Сепсис / септический шок","grp":"obst","tags":["4П: послеродовой сепсис"],"pro":[{"t":"Сепсис: подтверждённая инфекция + органная дисфункция (SOFA ≥2).","r":[{"s":"pio","p":20,"sec":"2"}]},{"t":"qSOFA ≥2: САД ≤100 мм рт.ст., ЧДД ≥22/мин, ШКГ <15.","r":[{"s":"pio","p":83,"sec":"Прил. Г1"}]},{"t":"Септический шок: вазопрессоры для СрАД ≥65 мм рт.ст. и лактат >2 ммоль/л, несмотря на адекватную инфузию.","r":[{"s":"pio","p":20,"sec":"2"}]},{"t":"Предшествующая лихорадка, хориоамнионит; начало не внезапное.","r":[{"s":"aje","p":46,"sec":"Прил. А3.2"}]}],"contra":[{"t":"Внезапное начало без лихорадки → ЭАЖ, ТЭЛА, анафилаксия, анестезиологические осложнения.","r":[{"s":"aje","p":46,"sec":"Прил. А3.2"}]}],"check":[{"t":"Лактат.","r":[{"s":"pio","p":25,"sec":"2.3"}]},{"t":"Микробиологическое (культуральное) исследование биологических сред.","r":[{"s":"pio","p":49,"sec":"Критерии качества"}]},{"t":"Скрининг: qSOFA, SIRS, MEOWS вне ОРИТ; SOFA в ОРИТ. Биохимия — органная дисфункция.","r":[{"s":"pio","p":23,"sec":"2.2"},{"s":"pio","p":24,"sec":"2.2"},{"s":"pio","p":26,"sec":"2.3"}]}],"tx":[{"t":"Антибиотики широкого спектра — в течение 1 ч.","r":[{"s":"pio","p":33,"sec":"3.4.1"}],"k":1,"q":["в течение 1 часа"]},{"t":"Кристаллоиды в первые 3 ч с контролем переносимости.","r":[{"s":"pio","p":34,"sec":"3.4.2"}],"d":"30 мл/кг","c":[{"l":"Кристаллоиды","f":30,"pu":"мл/кг","u":"мл","dec":0}],"k":1},{"t":"Норэпинефрин — первая линия, цель СрАД >65; при недостаточности — + эпинефрин; допамин — не первая линия.","r":[{"s":"pio","p":36,"sec":"3.4.3"}],"k":1},{"t":"Вазопрессоры начинать через периферическую вену, не откладывая до установки ЦВК.","r":[{"s":"pio","p":37,"sec":"3.4.3"}]},{"t":"Гидрокортизон при норэпинефрине >0,25 мкг/кг/мин не менее 4 ч.","r":[{"s":"pio","p":37,"sec":"3.4.3"}],"d":"≤200 мг/сут: 50 мг каждые 6 ч или непрерывная инфузия"},{"t":"Санация очага — не позднее 12 ч после диагноза (после первичной стабилизации); решить вопрос о гистерэктомии.","r":[{"s":"pio","p":41,"sec":"3.4.7"}],"k":1,"q":["не более 12 ч"]},{"t":"Остановка — стандартная СЛР; сепсис входит в «4П» ERC.","r":[{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy"}]}]},{"id":"pe","name":"ТЭЛА","grp":"t","tags":["4Т: тромбоз"],"pro":[{"t":"Внезапные одышка, потеря сознания, коллапс, тахикардия, боль за грудиной.","r":[{"s":"vte","p":10,"sec":"1.6"}]},{"t":"Признаки ТГВ; кашель, плевральная боль, кровохарканье — поздние проявления.","r":[{"s":"vte","p":11,"sec":"1.6"},{"s":"vte","p":13,"sec":"2.2"}]},{"t":"Низкий EtCO₂ (<13 мм рт.ст.) при качественных компрессиях — в пользу ТЭЛА (неспецифично).","r":[{"s":"erc_sc","p":null,"sec":"Pulmonary embolism"}]}],"contra":[{"t":"При гипотонии/шоке отсутствие перегрузки и дисфункции ПЖ на ЭхоКГ практически исключает ТЭЛА.","r":[{"s":"vte","p":19,"sec":"2.4"},{"s":"vte","p":20,"sec":"2.4"}]},{"t":"Профузное кровотечение — тромбоэмболия маловероятна; коагулопатия нехарактерна.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"},{"s":"aje","p":46,"sec":"Прил. А3.2"}]},{"t":"Изолированная дилатация ПЖ во время остановки не диагностирует ТЭЛА.","r":[{"s":"erc_als","p":null,"sec":"POCUS"}]}],"check":[{"t":"ЭКГ (исключить ОКС, перегрузка ПЖ), ЭхоКГ у постели; КТ-ангиопульмонография для подтверждения.","r":[{"s":"erc_sc","p":null,"sec":"Pulmonary embolism"},{"s":"vte","p":19,"sec":"2.4"}]},{"t":"Алгоритм обследования при беременности и до 6 нед после родов — Прил. Б1 КР ВТЭО.","r":[{"s":"vte","p":25,"sec":"3.1"}]}],"tx":[{"t":"Кислород.","r":[{"s":"vte","p":25,"sec":"3.1"}],"d":"При SpO₂ <94% (беременные) / <90% (родильницы); при нестабильности — высокопоточная оксигенотерапия или ИВЛ","k":1},{"t":"#Гепарин натрия (НФГ) немедленно при подозрении на ТЭЛА высокого риска.","r":[{"s":"vte","p":26,"sec":"3.1"},{"s":"erc_sc","p":null,"sec":"Pulmonary embolism"}],"d":"Болюс 80 Ед/кг, затем 18 Ед/кг/ч","c":[{"l":"Болюс","f":80,"pu":"Ед/кг","u":"Ед","dec":0},{"l":"Инфузия","f":18,"pu":"Ед/кг/ч","u":"Ед/ч","dec":0}],"k":1},{"t":"Тромболизис — только при жизнеугрожающей ТЭЛА (обструктивный шок или остановка); в беременность — решение междисциплинарного консилиума.","r":[{"s":"vte","p":26,"sec":"3.1"},{"s":"vte","p":27,"sec":"3.1"},{"s":"erc_sc","p":null,"sec":"Pulmonary embolism"}],"k":1},{"t":"#Алтеплаза.","r":[{"s":"vte","p":73,"sec":"Прил. А3.4"}],"d":"100 мг за 2 ч: 10 мг в/в струйно за 1–2 мин + 90 мг капельно за 2 ч; при массе <65 кг суммарно ≤1,5 мг/кг. Инфузию НФГ перед тромболизисом остановить","div":"ERC 2025 при остановке: алтеплаза 50 мг в/в болюсом ± ещё 50 мг через 30 мин, или 0,6–1,0 мг/кг (макс. 100 мг).","c":[{"l":"Предел при <65 кг","f":1.5,"pu":"мг/кг","u":"мг","dec":0,"cap":100}],"k":1},{"t":"#Стрептокиназа (альтернатива).","r":[{"s":"vte","p":73,"sec":"Прил. А3.4"}],"d":"250 тыс. МЕ за 30 мин, затем 100 тыс. МЕ/ч 24–72 ч; противопоказана при сроке <18 нед"},{"t":"После тромболитика — СЛР не менее 60 мин (в тексте КР опечатка: «антифибринолитическое»).","r":[{"s":"vte","p":26,"sec":"3.1"}],"div":"ERC 2025: продолжать СЛР 60–90 мин после тромболитика.","k":1},{"t":"ТЭЛА — нешоковый ритм (ЭАБП): электроимпульсная терапия не требуется.","r":[{"s":"vte","p":26,"sec":"3.1"}]},{"t":"ПЖ-недостаточность.","r":[{"s":"vte","p":26,"sec":"3.1"},{"s":"vte","p":76,"sec":"Прил. А3.6"},{"s":"erc_sc","p":null,"sec":"Pulmonary embolism"}],"d":"Жидкость осторожно ≤500 мл за 15–30 мин; норэпинефрин 0,2–1,0 мкг/кг/мин; добутамин 2–20 мкг/кг/мин; ВА-ЭКМО (в сочетании с хирургической эмболэктомией)","div":"Норэпинефрин/добутамин: КР ВТЭО (с. 76) — 0,2–1,0 и 2–20 мкг/кг/мин; КР ЭАЖ (с. 48–49) — 0,05–3,3 и 2,5–5,0 мкг/кг/мин (разные клинические ситуации).","c":[{"l":"Норэпинефрин","f":[0.2,1.0],"pu":"мкг/кг/мин","u":"мкг/мин","dec":0},{"l":"Добутамин","f":[2,20],"pu":"мкг/кг/мин","u":"мкг/мин","dec":0}]},{"t":"Альтернатива тромболизису у ухудшающихся: хирургическая эмболэктомия или катетерное лечение; ECPR у отобранных.","r":[{"s":"erc_sc","p":null,"sec":"Pulmonary embolism"}]},{"t":"Кровотечение на фоне гепарина: протамина сульфат.","r":[{"s":"vte","p":25,"sec":"3.1"}],"d":"1 мг на 100 ЕД НФГ/НМГ, не более 50 мг, под контролем АЧТВ"}]},{"id":"last","name":"Системная токсичность местных анестетиков (ЛАСТ)","grp":"anest","tags":["4Т: токсины"],"pro":[{"t":"Внезапное изменение психики, сильное возбуждение или потеря сознания, ± тонико-клонические судороги.","r":[{"s":"qrh","p":null,"sec":null}]},{"t":"Сердечно-сосудистый коллапс: синусовая брадикардия, блокады проведения, асистолия, желудочковые тахиаритмии.","r":[{"s":"qrh","p":null,"sec":null}]},{"t":"Связь по времени с введением МА (эпидуральная доза, блоки, инфильтрация); может развиться не сразу после инъекции.","r":[{"s":"qrh","p":null,"sec":null},{"s":"smfm","p":null,"sec":"Differential diagnosis"}]}],"contra":[{"t":"МА не вводились или время между введением и симптомами не соответствует.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"}]}],"check":[{"t":"ЭКГ-монитор, АД, SpO₂; КОС (ацидоз → гипервентиляция).","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"}]}],"tx":[{"t":"Прекратить введение МА (не забыть инфузионные помпы); позвать помощь, реанимационная тележка и набор липидной эмульсии; ДП, 100% O₂.","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"},{"s":"qrh","p":null,"sec":null}],"k":1},{"t":"Липидная эмульсия 20% — болюс.","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"},{"s":"qrh","p":null,"sec":null}],"d":"1,5 мл/кг в/в: за 1 мин (ERC) / за 2–3 мин (QRH; ≈100 мл при 70 кг). Пропофол — не замена","div":"Длительность болюса: ERC 2025 — за 1 мин; QRH 2023 — за 2–3 мин.","c":[{"l":"Болюс","f":1.5,"pu":"мл/кг","u":"мл","dec":0}],"k":1},{"t":"Липидная эмульсия 20% — инфузия.","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"},{"s":"qrh","p":null,"sec":null}],"d":"0,25 мл/кг/мин = 15 мл/кг/ч","c":[{"l":"Инфузия","f":0.25,"pu":"мл/кг/мин","u":"мл/мин","dec":1},{"l":"Инфузия","f":15,"pu":"мл/кг/ч","u":"мл/ч","dec":0}],"k":1},{"t":"Нет эффекта через 5 мин: удвоить скорость + до 2 повторных болюсов с интервалом 5 мин (QRH: на 5-й и 10-й мин).","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"},{"s":"qrh","p":null,"sec":null}],"d":"0,5 мл/кг/мин = 30 мл/кг/ч","c":[{"l":"Удвоенная","f":0.5,"pu":"мл/кг/мин","u":"мл/мин","dec":1},{"l":"Удвоенная","f":30,"pu":"мл/кг/ч","u":"мл/ч","dec":0}],"k":1},{"t":"Максимальная суммарная доза липидной эмульсии.","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"},{"s":"qrh","p":null,"sec":null}],"d":"12 мл/кг","c":[{"l":"Максимум","f":12,"pu":"мл/кг","u":"мл","dec":0}],"k":1},{"t":"Судороги: бензодиазепины малыми дробными дозами; тиопентал или пропофол — с осторожностью (отрицательный инотропный эффект).","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"},{"s":"qrh","p":null,"sec":null}]},{"t":"Ацидоз/гиперкапния → умеренная гипервентиляция.","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"},{"s":"qrh","p":null,"sec":null}]},{"t":"Остановка: адреналин в сниженной дозе; вазопрессин избегать (QRH); реанимация >1 ч; ECPR/ИК.","r":[{"s":"erc_sc","p":null,"sec":"Local anaesthetic systemic toxicity"},{"s":"qrh","p":null,"sec":null}],"d":"Адреналин ≤1 мкг/кг вместо 1 мг","c":[{"l":"Адреналин ≤","f":1,"pu":"мкг/кг","u":"мкг","dec":0}],"k":1}]},{"id":"spinal","name":"Высокий / тотальный спинальный блок","grp":"anest","tags":["анестезиологическое"],"pro":[{"t":"Слабость в руках, затруднённое дыхание, невнятная речь, седация, высокий уровень онемения — нарастают быстро (иногда поздно и постепенно).","r":[{"s":"nhs","p":null,"sec":null}]},{"t":"Тотальный спинальный блок: тяжёлая гипотония, выраженная брадикардия, остановка дыхания, потеря сознания.","r":[{"s":"nhs","p":null,"sec":null}]},{"t":"Высокий блок может вызвать апноэ, но резкое падение сердечного выброса и кровотечение для него нехарактерны.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"}]}],"contra":[{"t":"Коагулопатия/кровотечение → думать о ЭАЖ, кровотечении.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"},{"s":"aje","p":46,"sec":"Прил. А3.2"}]},{"t":"Рассмотреть альтернативы, например субарахноидальное кровоизлияние.","r":[{"s":"nhs","p":null,"sec":null}]}],"check":[{"t":"Уровень блока, сила в руках, дыхание, SpO₂, EtCO₂, АД, ЧСС.","r":[{"s":"nhs","p":null,"sec":null}]}],"tx":[{"t":"Позвать второго анестезиолога и ассистента; реанимационная тележка.","r":[{"s":"nhs","p":null,"sec":null}],"k":1},{"t":"Левый бок или смещение матки — устранять аортокавальную компрессию всё время.","r":[{"s":"nhs","p":null,"sec":null}],"k":1},{"t":"O₂ маской, ИВЛ мешком при необходимости; неадекватное дыхание → быстрая последовательная индукция, интубация, ИВЛ, поддержание анестезии; трудная/неудачная интубация — алгоритм трудных ДП.","r":[{"s":"nhs","p":null,"sec":null}],"k":1},{"t":"Кристаллоид в/в быстро.","r":[{"s":"nhs","p":null,"sec":null}],"d":"500–1000 мл","k":1},{"t":"Вазопрессоры.","r":[{"s":"nhs","p":null,"sec":null}],"d":"Эфедрин 15 мг в/в, повторять; рассмотреть фенилэфрин, адреналин, атропин","k":1},{"t":"Брадикардия с неблагоприятными признаками.","r":[{"s":"erc_als","p":null,"sec":"Bradycardia"}],"d":"Атропин 500 мкг в/в, повтор каждые 3–5 мин до 3 мг; вторая линия — адреналин 2–10 мкг/мин"},{"t":"В операционную — полный мониторинг (АД, SpO₂, EtCO₂, ЭКГ); дистресс плода → КС.","r":[{"s":"nhs","p":null,"sec":null}]},{"t":"Остановка — стандартная СЛР/ALS; срок >20 нед → реанимационное КС.","r":[{"s":"erc_sc","p":null,"sec":"General recommendations"},{"s":"aje","p":18,"sec":"3.1"}]}]},{"id":"anaph","name":"Анафилаксия / анафилактический шок","grp":"anest","tags":["лекарства"],"pro":[{"t":"Острое начало (минуты–часы) после контакта с триггером (часто в/в препарат): кожа/слизистые (крапивница, зуд, отёк губ, языка) + дыхательные нарушения (бронхоспазм, стридор, гипоксемия) и/или снижение АД.","r":[{"s":"ash","p":null,"sec":"1.6"}]},{"t":"Кожных проявлений может не быть.","r":[{"s":"erc_sc","p":null,"sec":"Anaphylaxis"}]},{"t":"Тяжесть: 1 ст. — АД ↓ на 30–40 мм рт.ст.; 2 ст. — ниже 90–60/40; 3 ст. — 60–40/0, потеря сознания; 4 ст. — АД не определяется, остановка → СЛР.","r":[{"s":"ash","p":null,"sec":"1.5"}]}],"contra":[{"t":"Коагулопатия и выраженная дисфункция сердца нехарактерны; ЭхоКГ с ПЖ-недостаточностью — скорее ЭАЖ.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"},{"s":"aje","p":46,"sec":"Прил. А3.2"}]}],"check":[{"t":"АД, SpO₂, ЭКГ; кожа и слизистые; аускультация (бронхоспазм); что вводилось перед реакцией.","r":[{"s":"ash","p":null,"sec":"1.6"}]}],"tx":[{"t":"Вызвать реанимационную бригаду; прекратить поступление аллергена, венозный доступ сохранить.","r":[{"s":"ash","p":null,"sec":"3.1, рек. 7–8"}],"k":1},{"t":"Беременную — на левый бок с обеспечением проходимости ВДП; при удушье от бронхоспазма/ангиоотёка — сидя. Не поднимать и не сажать при шоке.","r":[{"s":"ash","p":null,"sec":"3.1, рек. 9–11"},{"s":"erc_sc","p":null,"sec":"Anaphylaxis"}],"k":1},{"t":"Эпинефрин в/м немедленно — переднебоковая поверхность бедра (можно через одежду).","r":[{"s":"ash","p":null,"sec":"3.1, рек. 12–14"},{"s":"erc_sc","p":null,"sec":"Anaphylaxis"}],"d":"0,01 мг/кг, максимум 0,5 мг","c":[{"l":"Эпинефрин в/м","f":0.01,"pu":"мг/кг","u":"мг","dec":2,"cap":0.5}],"k":1},{"t":"Повтор эпинефрина в/м при отсутствии ответа.","r":[{"s":"ash","p":null,"sec":"3.1, рек. 16"},{"s":"erc_sc","p":null,"sec":"Anaphylaxis"}],"d":"КР: не ранее чем через 5 мин; ERC: если нет улучшения в течение 5 мин (в тексте — через 3–5 мин)","div":"Интервал повтора: КР АШ — «не менее чем через 5 минут»; ERC 2025 — «в течение 5 мин» / «через 3–5 мин».","k":1},{"t":"Эпинефрин в/в — только при кардиореспираторном мониторинге (анестезиолог-реаниматолог), если ≥2 в/м доз недостаточно; без в/в доступа — в/м каждые 5–10 мин.","r":[{"s":"ash","p":null,"sec":"3.1, рек. 13, 17, 19, 21"}],"d":"1 мл раствора эпинефрина на 100 мл 0,9% NaCl, 0,5–1 мл/кг/ч","c":[{"l":"Скорость","f":[0.5,1],"pu":"мл/кг/ч","u":"мл/ч","dec":0}],"k":1},{"t":"Кислород через лицевую маску.","r":[{"s":"ash","p":null,"sec":"3.1, рек. 22"},{"s":"erc_sc","p":null,"sec":"Anaphylaxis"}],"d":"ERC: 15 л/мин, цель SpO₂ 94–98%"},{"t":"Растворы электролитов после эпинефрина.","r":[{"s":"ash","p":null,"sec":"3.1, рек. 23"}],"d":"10–30 мл/кг: 500–1000 мл при нормотензии, 1000–2000 мл при гипотонии; при сердечной недостаточности ≤250 мл за 5–10 мин; растворы декстрозы не применять","div":"ERC 2025: болюсы кристаллоида 10–20 мл/кг, повторять по ответу.","c":[{"l":"Объём (КР)","f":[10,30],"pu":"мл/кг","u":"мл","dec":0},{"l":"Болюс (ERC)","f":[10,20],"pu":"мл/кг","u":"мл","dec":0}],"k":1},{"t":"Рефрактерный шок: второй вазоактивный препарат — норадреналин или вазопрессин (в КР АШ не указано).","r":[{"s":"erc_sc","p":null,"sec":"Anaphylaxis"}]},{"t":"Сохраняющийся бронхоспазм — сальбутамол через небулайзер.","r":[{"s":"ash","p":null,"sec":"3.1, рек. 26"}],"d":"2,5 мг/2,5 мл"},{"t":"После стабилизации АД — системные ГКС.","r":[{"s":"ash","p":null,"sec":"3.1, рек. 24"}],"d":"Метилпреднизолон 50–100 мг или гидрокортизон 200 мг в/в (эквиваленты: преднизолон 60–120 мг, дексаметазон 8–16 мг)","div":"ERC 2025: рутинное применение ГКС при анафилаксии не рекомендуется."},{"t":"После стабилизации АД при кожных проявлениях — антигистаминные (быстрое в/в введение усиливает гипотонию).","r":[{"s":"ash","p":null,"sec":"3.1, рек. 25"},{"s":"erc_sc","p":null,"sec":"Anaphylaxis"}],"d":"Клемастин 2 мг; хлоропирамин 20–40 мг (1–2 мл 2%); дифенгидрамин 25–50 мг в/в медленно (≥5 мин)"},{"t":"Остановка: стандартный ALS, включая в/в адреналин; коррекция гиповолемии и гипоксии; ECPR при рефрактерной остановке.","r":[{"s":"ash","p":null,"sec":"1.5"},{"s":"erc_sc","p":null,"sec":"Anaphylaxis"}],"k":1}]},{"id":"cardiac","name":"Кардиальные: ПКМП, ОКС, аритмии, расслоение аорты","grp":"card","tags":["4П: кардиомиопатия","4Т: коронарный тромбоз"],"pro":[{"t":"Боль в груди, изменения ЭКГ; факторы риска ИМ: возраст, СД, ХАГ, курение, ожирение, дислипидемия, ИБС.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"}]},{"t":"Перипартальная кардиомиопатия — одна из «4П» материнской остановки; ЭхоКГ помогает её выявить.","r":[{"s":"erc_sc","p":null,"sec":"Cardiac arrest in pregnancy"},{"s":"smfm","p":null,"sec":"Differential diagnosis"}]},{"t":"Расслоение аорты и острая сердечная недостаточность — в дифдиагнозе внезапного коллапса.","r":[{"s":"aje","p":9,"sec":"1.6"},{"s":"aje","p":10,"sec":"1.6"}]},{"t":"Нестабильная аритмия: шок (САД <90), обморок, сердечная недостаточность, ишемия миокарда.","r":[{"s":"erc_als","p":null,"sec":"Peri-arrest arrhythmias"}]}],"contra":[{"t":"Острая ПЖ-недостаточность на ЭхоКГ — скорее ЭАЖ, чем кардиальная причина.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"}]}],"check":[{"t":"ЭКГ в 12 отведениях и тропонины — как можно раньше; ЭхоКГ у постели.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"}]}],"tx":[{"t":"Нестабильная тахиаритмия → синхронизированная кардиоверсия.","r":[{"s":"erc_als","p":null,"sec":"Tachyarrhythmias"}],"d":"ФП — сразу максимальная энергия; трепетание/НЖТ — 70–120 Дж; ЖТ с пульсом — 120–150 Дж; неудача → амиодарон 300 мг в/в за 10–20 мин и повтор, затем 900 мг за 24 ч","k":1},{"t":"Брадикардия с неблагоприятными признаками.","r":[{"s":"erc_als","p":null,"sec":"Bradycardia"}],"d":"Атропин 500 мкг в/в, повтор каждые 3–5 мин до 3 мг; вторая линия — изопреналин 5 мкг/мин или адреналин 2–10 мкг/мин; кардиостимуляция","k":1},{"t":"ROSC + подъём ST → коронарография (и ЧКВ) в течение 120 мин; без подъёма ST — при нестабильности или продолжающейся ишемии.","r":[{"s":"erc_sc","p":null,"sec":"Coronary thrombosis"}],"k":1},{"t":"Без ROSC — рассмотреть перевод на продолжающейся СЛР для ангиографии/ECPR (по ресурсам).","r":[{"s":"erc_sc","p":null,"sec":"Coronary thrombosis"}]},{"t":"Кардиолог/кардиохирург; механическая поддержка кровообращения по показаниям.","r":[{"s":"erc_als","p":null,"sec":"ECPR"},{"s":"erc_sc","p":null,"sec":"Cardiac arrest in the catheterisation laboratory"}]}]},{"id":"hypoxia","name":"Гипоксия (ДП, аспирация, отёк лёгких)","grp":"h","tags":["4Г: гипоксия"],"pro":[{"t":"Причины в акушерстве: аспирация желудочного содержимого, реакция на трансфузию (TRALI), отёк лёгких (ПЭ, ЭАЖ), бронхоспазм (анафилаксия), гиповентиляция (высокий блок, гипермагниемия).","r":[{"s":"aje","p":10,"sec":"1.6"},{"s":"smfm","p":null,"sec":"Differential diagnosis"}]},{"t":"Показания к экстренной ИВЛ: остановка сердца; апноэ или ЧДД <8/мин; гипоксическое угнетение сознания; истощение дыхательных мышц; нарастающий цианоз; отёк лёгких; PaO₂ <60 мм рт.ст.; SaO₂ <90%; PaCO₂ >55 мм рт.ст.","r":[{"s":"aje","p":18,"sec":"3.1"}]}],"contra":[{"t":"SpO₂ 94–98% при дыхании воздухом — дотация кислорода не нужна.","r":[{"s":"aje","p":18,"sec":"3.1"},{"s":"aje","p":49,"sec":"Прил. Б1"}]}],"check":[{"t":"SpO₂, газы крови, EtCO₂; аускультация; рентгенография лёгких.","r":[{"s":"aje","p":13,"sec":"2.3"},{"s":"aje","p":15,"sec":"2.4"},{"s":"aje","p":18,"sec":"3.1"}]}],"tx":[{"t":"Ступенчато от простых приёмов к продвинутым; максимальная FiO₂ во время СЛР.","r":[{"s":"erc_als","p":null,"sec":"Airway and ventilation"}],"k":1},{"t":"Трудные ДП у беременных часты — самый опытный специалист; ранняя защита ДП.","r":[{"s":"aha","p":null,"sec":null}],"k":1},{"t":"Интубация — при высокой успешности, с капнографией; видеоларингоскоп предпочтителен; трубка 7,0–8,5.","r":[{"s":"erc_als","p":null,"sec":"Airway and ventilation"},{"s":"aje","p":18,"sec":"3.1"}]},{"t":"Неудача стандартных методов → крикотиреотомия (обученным специалистом).","r":[{"s":"erc_als","p":null,"sec":"Airway and ventilation"}]},{"t":"ИВЛ во время СЛР.","r":[{"s":"erc_als","p":null,"sec":"Airway and ventilation"}],"d":"ЧД 10/мин, ДО 6–8 мл/кг идеальной массы, FiO₂ максимальная, PEEP 0–5 см вод.ст."},{"t":"После ROSC — SpO₂ 94–98%, избегать 100% O₂.","r":[{"s":"smfm","p":null,"sec":"Post-arrest"},{"s":"aje","p":49,"sec":"Прил. Б1"}]}]},{"id":"lytes","name":"Гипер-/гипокалиемия, гипокальциемия","grp":"h","tags":["4Г: метаболические"],"pro":[{"t":"Гиперкалиемия: K⁺ >5,5 ммоль/л; при массивной трансфузии эритроцитов длительного хранения.","r":[{"s":"erc_sc","p":null,"sec":"Hyperkalaemia"},{"s":"prk","p":28,"sec":"3.1"}]},{"t":"Гипокальциемия (Ca <2,1 ммоль/л), в т.ч. при массивной трансфузии: парестезии, тетания, судороги, AV-блокада, удлинение QT.","r":[{"s":"erc_sc","p":null,"sec":"Табл. 2"}]},{"t":"Гипокалиемия — лечение по тяжести, симптомам и ЭКГ.","r":[{"s":"erc_sc","p":null,"sec":"Hypokalaemia"}]}],"contra":[{"t":"Нормальная ЭКГ не исключает тяжёлую гиперкалиемию — нужен анализ K⁺ у постели.","r":[{"s":"erc_sc","p":null,"sec":"Hyperkalaemia"}]}],"check":[{"t":"K⁺, ионизированный Ca²⁺, Mg²⁺, глюкоза — у постели (газоанализатор); ЭКГ.","r":[{"s":"erc_sc","p":null,"sec":"Hyperkalaemia"}]}],"tx":[{"t":"Тяжёлая гиперкалиемия с изменениями ЭКГ.","r":[{"s":"erc_sc","p":null,"sec":"Hyperkalaemia"}],"d":"10% кальция хлорид 10 мл в/в","k":1},{"t":"Сдвиг K⁺ в клетки.","r":[{"s":"erc_sc","p":null,"sec":"Hyperkalaemia"}],"d":"Инсулин 10 ЕД + глюкоза 25 г в/в; затем 10% глюкоза 50 мл/ч 5 ч, если исходная глюкоза <7 ммоль/л; сальбутамол 10–20 мг через небулайзер","k":1},{"t":"Остановка при гиперкалиемии.","r":[{"s":"erc_sc","p":null,"sec":"Hyperkalaemia"}],"d":"10% кальция хлорид 10 мл + натрия гидрокарбонат 50 ммоль в/в (раздельные линии или промывание между ними)","k":1},{"t":"Выведение K⁺.","r":[{"s":"erc_sc","p":null,"sec":"Hyperkalaemia"}],"d":"Натрия циркония циклосиликат 10 г внутрь; диализ при рефрактерной гиперкалиемии; ECPR по местному протоколу"},{"t":"Гипокалиемическая остановка.","r":[{"s":"erc_sc","p":null,"sec":"Hypokalaemia"}],"d":"KCl 20 ммоль в/в за 2–3 мин, затем 10 ммоль за 2 мин; корректировать магний"},{"t":"Гипокальциемия.","r":[{"s":"erc_sc","p":null,"sec":"Табл. 2"},{"s":"prk","p":28,"sec":"3.1"}],"d":"10% кальция глюконат 10–20 мл за 5–10 мин; инфузия 100 мл 10% глюконата в 1000 мл 0,9% NaCl или 5% глюкозы 50 мл/ч (по уровню Ca²⁺)","x":"КР ПРК: кальция хлорид при iCa <0,9 ммоль/л, доза не указана."},{"t":"Рутинно кальций и натрия гидрокарбонат при СЛР не вводить (только по показаниям).","r":[{"s":"erc_als","p":null,"sec":"Other medication"}]}]},{"id":"hypotherm","name":"Гипотермия","grp":"h","tags":["4Г: гипотермия"],"pro":[{"t":"Массивная инфузия/трансфузия неподогретых растворов (КР требуют подогрева до 35–40 °C).","r":[{"s":"prk","p":22,"sec":"3.1"}]}],"contra":[],"check":[{"t":"Температура ядра — низкотемпературным термометром.","r":[{"s":"erc_sc","p":null,"sec":"Accidental hypothermia"}]}],"tx":[{"t":"Согревание: тепловые пушки, одеяла, только подогретые растворы и компоненты крови.","r":[{"s":"aje","p":21,"sec":"3.1"},{"s":"prk","p":22,"sec":"3.1"}],"k":1},{"t":"<30 °C: ФЖ после 3 разрядов — отложить разряды до >30 °C; адреналин 1 мг в/в однократно.","r":[{"s":"erc_sc","p":null,"sec":"Accidental hypothermia"}],"k":1},{"t":"30–35 °C: интервал введения адреналина 6–10 мин.","r":[{"s":"erc_sc","p":null,"sec":"Accidental hypothermia"}],"k":1},{"t":"Остановка при гипотермии — согревание ВА-ЭКМО.","r":[{"s":"erc_sc","p":null,"sec":"Accidental hypothermia"}]},{"t":"#Эптаког альфа менее эффективен при t <34 °C.","r":[{"s":"prk","p":28,"sec":"3.1"}]}]},{"id":"glucose","name":"Гипо-/гипергликемия","grp":"h","tags":["4Г: метаболические"],"pro":[{"t":"Риск ятрогенной гипогликемии — после инсулин-глюкозы при лечении гиперкалиемии.","r":[{"s":"erc_sc","p":null,"sec":"Hyperkalaemia"}]},{"t":"Гипергликемия — в дифдиагнозе судорог.","r":[{"s":"pe","p":12,"sec":"1.6"}]}],"contra":[],"check":[{"t":"Глюкоза крови у постели (глюкометр/газоанализатор); гипергликемия — в дифдиагнозе судорог.","r":[{"s":"pe","p":12,"sec":"1.6"}]}],"tx":[{"t":"Гипогликемия — коррекция в/в глюкозой: доза не найдена ни в КР РОАГ, ни в использованных международных источниках → по протоколу отделения.","r":[]},{"t":"После ROSC — глюкоза 140–180 мг/дл.","r":[{"s":"smfm","p":null,"sec":"Post-arrest"}],"x":"≈7,8–10 ммоль/л (пересчёт)"}]},{"id":"tension","name":"Напряжённый пневмоторакс","grp":"t","tags":["4Т: напряжённый пневмоторакс"],"pro":[{"t":"Выявляется при УЗИ у постели (POCUS) — не прерывая компрессии.","r":[{"s":"erc_als","p":null,"sec":"POCUS"}]},{"t":"Исключать при остановке в операционной.","r":[{"s":"erc_sc","p":null,"sec":"Cardiac arrest in the operating room"}]}],"contra":[],"check":[{"t":"POCUS (только опытный оператор).","r":[{"s":"erc_als","p":null,"sec":"POCUS"}]}],"tx":[{"t":"Декомпрессия грудной клетки (дозировок нет).","r":[{"s":"erc_sc","p":null,"sec":"Traumatic cardiac arrest"}],"k":1}]},{"id":"tamponade","name":"Тампонада сердца","grp":"t","tags":["4Т: тампонада"],"pro":[{"t":"Выявляется при POCUS.","r":[{"s":"erc_als","p":null,"sec":"POCUS"}]},{"t":"Расслоение аорты — в дифдиагнозе внезапного коллапса.","r":[{"s":"aje","p":10,"sec":"1.6"}]}],"contra":[],"check":[{"t":"POCUS (только опытный оператор).","r":[{"s":"erc_als","p":null,"sec":"POCUS"}]}],"tx":[{"t":"Устранение тампонады: при травматической остановке — срочная торакотомия.","r":[{"s":"erc_sc","p":null,"sec":"Traumatic cardiac arrest"}],"k":1,"x":"Другие методы (перикардиоцентез) в использованных источниках не описаны."}]},{"id":"air","name":"Воздушная эмболия","grp":"t","tags":["4Т: эмболия"],"pro":[{"t":"Внезапный кардиореспираторный коллапс; при неврологических симптомах — подозрение на артериальную эмболию.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"}]},{"t":"В дифдиагнозе ЭАЖ (эмболия воздушная, жировая, тромбомассами).","r":[{"s":"aje","p":9,"sec":"1.6"}]}],"contra":[],"check":[],"tx":[{"t":"100% O₂ (нормобарический); положение на левом боку; при центральном катетере — аспирировать воздух; артериальная эмболия — гипербарическая оксигенация, если доступна.","r":[{"s":"smfm","p":null,"sec":"Differential diagnosis"}],"k":1}]},{"id":"tox","name":"Другие токсины / лекарства","grp":"t","tags":["4Т: токсины"],"pro":[{"t":"Оценить возможную интоксикацию у всех при остановке (см. также «Гипермагниемия», «ЛАСТ», «Анафилаксия»).","r":[{"s":"erc_sc","p":null,"sec":"Toxic agents"}]}],"contra":[],"check":[],"tx":[{"t":"Антидоты — как можно раньше; снизить всасывание, деконтаминация, ускоренное выведение; консультация токсикологического центра; готовность к длительной реанимации.","r":[{"s":"erc_sc","p":null,"sec":"Toxic agents"}],"k":1}]}],"groups":[{"id":"obst","name":"Акушерские"},{"id":"anest","name":"Анестезия / ЛС"},{"id":"card","name":"Кардиальные"},{"id":"h","name":"4Г"},{"id":"t","name":"4Т"}],"divs":[{"topic":"Сроки реанимационного (перимортального) КС","items":[["КР ЭАЖ 2025, разд. 3.1, с. 18–19","срок >20 нед; нет эффекта СЛР 4 мин → родоразрешение (УУР B)"],["КР ЭАЖ 2025, Прил. Б1, с. 48","если через 4 мин пульс отсутствует — начать реанимационную гистеротомию"],["КР ЭАЖ 2025, разд. 3.2, с. 23","ЭАЖ, срок ≥23 нед — немедленное родоразрешение (УУР C)"],["AHA 2025","дно матки на уровне пупка и выше; цель — родоразрешение к 5 мин"],["ERC 2025 SC","5 мин больше не подчёркиваются; готовиться немедленно, выполнять как можно скорее на месте"],["SMFM 2016","≥23 нед — немедленно; «классически» 4 мин; некоторые авторы предлагают 20 нед"],["ТЗ приложения","≥20 нед (в КР — «более 20 недель»)"]]},{"topic":"Внутрикостный доступ","items":[["ERC 2025 ALS","если в/в не удалось за 2 попытки"],["КР ЭАЖ 2025, с. 17","после трёх попыток"]]},{"topic":"Кальций при гипермагниемии","items":[["КР ПЭ 2024, Прил. А3.4, с. 68","10% кальция глюконат 10 мл в/в за 10 мин"],["ERC 2025 SC, табл. 2","10% глюконат 10–30 мл или 10% хлорид 5–10 мл, повторно при необходимости; лечить при Mg >1,75 ммоль/л"]]},{"topic":"Анафилаксия: ГКС","items":[["КР АШ 2025, рек. 24","после стабилизации — метилпреднизолон 50–100 мг или гидрокортизон 200 мг"],["ERC 2025 SC","рутинно не рекомендуются"]]},{"topic":"Анафилаксия: инфузия","items":[["КР АШ 2025, рек. 23","10–30 мл/кг (500–1000 / 1000–2000 мл)"],["ERC 2025 SC","болюсы 10–20 мл/кг, повторять по ответу"]]},{"topic":"Анафилаксия: повтор адреналина в/м","items":[["КР АШ 2025, рек. 16","не ранее чем через 5 мин"],["ERC 2025 SC","если нет улучшения в течение 5 мин; в тексте обоснования — через 3–5 мин"]]},{"topic":"ТЭЛА: тромболизис и длительность СЛР","items":[["КР ВТЭО 2025, Прил. А3.4, с. 73","алтеплаза 100 мг за 2 ч (10 мг болюс + 90 мг); <65 кг — ≤1,5 мг/кг"],["ERC 2025 SC","при остановке: 50 мг болюс ± 50 мг через 30 мин или 0,6–1,0 мг/кг (≤100 мг)"],["КР ВТЭО 2025, с. 26","СЛР после тромболитика ≥60 мин"],["ERC 2025 ALS/SC","СЛР 60–90 мин"]]},{"topic":"ЛАСТ: болюс липидной эмульсии","items":[["ERC 2025 SC","1,5 мл/кг за 1 мин"],["QRH 3-10 (2023)","1,5 мл/кг за 2–3 мин"]]},{"topic":"ЭКМО при ЭАЖ","items":[["КР ЭАЖ 2025, с. 25","рассмотреть ВА-ЭКМО при длительной СЛР/рефрактерной ПЖ-недостаточности"],["SMFM 2016","спорна, рутинно не рекомендуется"],["ERC 2025 ALS","ECPR — у отобранных пациентов"]]},{"topic":"Вазопрессоры/инотропы — между КР","items":[["КР ЭАЖ 2025, Прил. Б1, с. 48–49","норэпинефрин 0,05–3,3; добутамин 2,5–5,0 мкг/кг/мин"],["КР ВТЭО 2025, Прил. А3.6, с. 76","норэпинефрин 0,2–1,0; добутамин 2–20 мкг/кг/мин"],["КР ПРК 2025","дозы не приведены"]]},{"topic":"Расхождения внутри одной КР","items":[["КР ПРК 2025","криопреципитат: с. 25 — 1 доза/5 кг; Прил. Б4, с. 75 — 1 доза/10 кг"],["КР ПРК 2025","СЗП: с. 24 — 15–20 мл/кг; Прил. А3.2, с. 68 — 12–30 мл/кг; Прил. Б4, с. 75 — 12–15 мл/кг"],["КР ПЭ 2024","нитроглицерин: с. 27 — 5→100 мкг/мин; с. 38 — «5→200 мг/мин» (ошибка единиц?)"],["КР ПИО 2024","qSOFA: с. 20 — «>2 баллов»; Прил. Г1, с. 83 — «2 или более»"],["КР ЭАЖ 2025","ПКС: с. 18–19 — >20 нед и 4 мин; с. 23 — ≥23 нед, немедленно"],["КР ВТЭО 2025, с. 26","«антифибринолитическое средство» — по смыслу тромболитик (опечатка)"]]}],"gaps":[["СЛР у беременных (алгоритм ALS: ритмы, энергия, адреналин, амиодарон)","в КР РОАГ — только общие положения (КР ЭАЖ: «в соответствии с рекомендациями НСР и ERC»; те же режимы и препараты) → ERC 2025 ALS, AHA 2025, SMFM 2016"],["Реанимационное КС при остановке не от ЭАЖ","отдельной КР нет; положения есть только в КР ЭАЖ (с. 18–19, 23, 48) → AHA 2025, ERC 2025"],["ЛАСТ (липидная эмульсия)","нет → ERC 2025 SC, QRH 3-10"],["Высокий/тотальный спинальный блок","нет (только упоминание в дифдиагнозе КР ЭАЖ) → NHS Lothian (локальный протокол), SMFM 2016"],["Анафилаксия","в базе РОАГ нет → КР «Анафилактический шок» 2025 (ID 263_2, РААКИ/ФАР); в ней нет вазопрессоров при рефрактерном шоке → ERC 2025"],["Гипермагниемия","есть в КР ПЭ (Прил. А3.4), но без повторных доз кальция и без CaCl → ERC 2025, табл. 2"],["K⁺/Ca²⁺ при остановке","нет; КР ПРК: CaCl при iCa <0,9 ммоль/л без дозы → ERC 2025"],["Гипотермия при остановке","нет → ERC 2025"],["Гипогликемия","дозы нет ни в КР РОАГ, ни в использованных международных источниках"],["Напряжённый пневмоторакс, тампонада","нет → ERC 2025 (POCUS, декомпрессия, торакотомия), без доз"],["Кардиальные причины (ПКМП, ОКС, аритмии, расслоение аорты)","нет → ERC 2025 ALS/SC, SMFM 2016"],["ОНМК","в КР ПЭ — только показания к КТ/МРТ и дифдиагноз судорог; лечение — профильные КР (нет в базе)"],["Воздушная эмболия","только в дифдиагнозе КР ЭАЖ → SMFM 2016"],["Постреанимационный период","нет → SMFM 2016, ERC 2025"],["Дозы вазопрессоров при геморрагическом шоке","в КР ПРК — «согласно инструкции»"],["Выворот матки: β-миметики","названы в КР ПРК (Прил. Б6), доза не указана"],["Урапидил при резистентной АГ","назван в КР ПЭ, доза не указана"],["Предлежание плаценты","КР в базе проекта нет"]]}</script>
+<script>
+(function(){
+'use strict';
+var KB = JSON.parse(document.getElementById('kb').textContent);
+var VERSION = '1.0 (24.10.2026)';
+var LS_STATE = 'mc.state.v1', LS_SET = 'mc.settings.v1';
+var CYCLE = 120000, PMCD_DEC = 240000, PMCD_GOAL = 300000;
+function now(){ return (typeof window.__mcNow === 'function') ? window.__mcNow() : Date.now(); }
+
+/* ---------------- состояние ---------------- */
+function blank(){ return {t0:null, preg:null, wt:null, arrest:null, causes:{}, done:{}, log:[], fired:{}, copied:0, view:null}; }
+function load(k){ try{ var s = localStorage.getItem(k); return s ? JSON.parse(s) : null; }catch(e){ return null; } }
+function store(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+var S = load(LS_STATE) || blank();
+var SET = load(LS_SET) || {theme:'auto', voice:true, minute:true};
+function save(){ store(LS_STATE, S); }
+function saveSet(){ store(LS_SET, SET); }
+
+/* ---------------- утилиты ---------------- */
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function pad(n){ return (n < 10 ? '0' : '') + n; }
+function fmtDur(ms){ if(ms < 0) ms = 0; var s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor((s%3600)/60), x = s%60;
+  return h ? (h + ':' + pad(m) + ':' + pad(x)) : (pad(m) + ':' + pad(x)); }
+function fmtShort(ms){ if(ms < 0) ms = 0; var s = Math.round(ms/1000); return Math.floor(s/60) + ':' + pad(s%60); }
+function fmtClock(t){ var d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
+function fmtDate(t){ var d = new Date(t); return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear(); }
+function fmtNum(x, dec){ var v = Number(x.toFixed(dec)); return String(v).replace('.', ','); }
+function plural(n, a, b, c){ var m10 = n % 10, m100 = n % 100; if(m10 === 1 && m100 !== 11) return a; if(m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return b; return c; }
+function minWord(n){ return n + ' ' + plural(n, 'минута', 'минуты', 'минут'); }
+var $ = function(id){ return document.getElementById(id); };
+var CAUSE = {}; KB.causes.forEach(function(c){ CAUSE[c.id] = c; });
+var PREG_TXT = {ge20:'беременность ≥20 нед / дно матки на уровне пупка и выше', lt20:'беременность <20 нед', pp:'после родов'};
+
+/* ---------------- журнал ---------------- */
+function addLog(m, u){ var t = now(); S.log.push({t:t, m:m, u:u || null}); save(); toast('Записано ' + (S.t0 ? fmtDur(t - S.t0) : '') + ' — ' + m); return t; }
+function rel(t){ return S.t0 ? fmtDur(t - S.t0) : '--:--'; }
+var toastTimer = null;
+function toast(msg){ var el = $('toast'); el.textContent = msg; el.className = 'show'; clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.className = ''; }, 1600); }
+
+/* ---------------- звук, голос, вибрация, экран ---------------- */
+var AC = null;
+function audio(){ if(!AC){ try{ var C = window.AudioContext || window.webkitAudioContext; if(C) AC = new C(); }catch(e){} }
+  try{ if(AC && AC.state === 'suspended') AC.resume(); }catch(e){} return AC; }
+function beep(times){ var c = audio(); if(!c) return; try{ for(var i = 0; i < (times || 1); i++){ var o = c.createOscillator(), g = c.createGain();
+  o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.12; o.connect(g); g.connect(c.destination);
+  var t = c.currentTime + i * 0.32; o.start(t); o.stop(t + 0.18); } }catch(e){} }
+function vib(){ try{ if(navigator.vibrate) navigator.vibrate([300, 120, 300]); }catch(e){} }
+function ruVoice(){ try{ var v = window.speechSynthesis.getVoices() || []; for(var i = 0; i < v.length; i++){ if(/^ru/i.test(v[i].lang)) return v[i]; } }catch(e){} return null; }
+function speak(text){ if(!SET.voice) return; try{ var ss = window.speechSynthesis; if(!ss || !window.SpeechSynthesisUtterance) return;
+  var u = new SpeechSynthesisUtterance(text); u.lang = 'ru-RU'; var v = ruVoice(); if(v) u.voice = v; u.rate = 1.0; ss.speak(u); }catch(e){} }
+function unlock(){ audio(); try{ if(window.speechSynthesis && window.SpeechSynthesisUtterance){ var u = new SpeechSynthesisUtterance(' '); u.volume = 0; window.speechSynthesis.speak(u); } }catch(e){} }
+var wl = null;
+function keepAwake(){ try{ if(S.t0 && 'wakeLock' in navigator && document.visibilityState === 'visible' && !wl){
+  navigator.wakeLock.request('screen').then(function(l){ wl = l; l.addEventListener('release', function(){ wl = null; }); }).catch(function(){}); } }catch(e){} }
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible'){ keepAwake(); tick(); } });
+
+/* ---------------- тема ---------------- */
+function applyTheme(){ var r = document.documentElement; if(SET.theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', SET.theme);
+  var dark = SET.theme === 'dark' || (SET.theme === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  var m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content', dark ? '#000000' : '#ffffff'); }
+
+/* ---------------- ссылки на источники ---------------- */
+var ROAG = KB.roag;
+function secTxt(sec){ if(!sec) return ''; return /^\d/.test(sec) ? 'разд. ' + sec : sec; }
+function refTxt(r){ var s = KB.sources[r.s]; var out = s ? s.short : r.s; var sec = secTxt(r.sec); if(sec) out += ', ' + sec; if(r.p != null) out += ', с. ' + r.p; return out; }
+function srcLine(refs){ refs = refs || [];
+  if(!refs.length) return '<p class="src"><b>Источник не найден</b> — ни в КР РОАГ, ни в использованных международных источниках.</p>';
+  var hasRoag = refs.some(function(r){ return ROAG.indexOf(r.s) >= 0; });
+  var txt = refs.map(refTxt).join('; ');
+  return '<p class="src">' + (hasRoag ? '<b>Источник:</b> ' : '<b>в КР РОАГ нет, источник:</b> ') + esc(txt) + '</p>'; }
+function calcHtml(cs){ if(!cs || !cs.length) return '';
+  if(!S.wt) return '<p class="calc">Расчёт на массу тела: укажите массу (вкладка «Шаги» или выше).</p>';
+  return cs.map(function(c){ var f = Array.isArray(c.f) ? c.f : [c.f, c.f]; var lo = f[0] * S.wt, hi = f[1] * S.wt, capped = false;
+    if(c.cap != null){ if(lo > c.cap){ lo = c.cap; capped = true; } if(hi > c.cap){ hi = c.cap; capped = true; } }
+    var per = (f[0] === f[1]) ? fmtNum(f[0], 3) : (fmtNum(f[0], 3) + '–' + fmtNum(f[1], 3));
+    var res = (lo === hi) ? fmtNum(lo, c.dec) : (fmtNum(lo, c.dec) + '–' + fmtNum(hi, c.dec));
+    return '<p class="calc num">' + esc(c.l) + ': ' + per + ' ' + esc(c.pu) + ' × ' + fmtNum(S.wt, 1) + ' кг = ' + res + ' ' + esc(c.u) + (capped ? ' (ограничено максимумом ' + fmtNum(c.cap, 2) + ' ' + esc(c.u) + ')' : '') + '</p>'; }).join(''); }
+
+function itemHtml(it, key, cause){ var done = S.done[key]; var canLog = !!S.t0 && !it.nolog;
+  var h = '<div class="act' + (canLog ? '' : ' noc') + '">';
+  if(canLog) h += '<button class="chk" data-a="done" data-v="' + esc(key) + '" aria-pressed="' + (done ? 'true' : 'false') + '" aria-label="Отметить: ' + esc(it.t) + '">✓</button>';
+  h += '<div>'; h += '<p class="t">' + esc(it.t) + '</p>';
+  if(it.d) h += '<p class="d">' + esc(it.d) + '</p>';
+  h += calcHtml(it.c);
+  if(it.x) h += '<p class="x">Примечание: ' + esc(it.x) + '</p>';
+  h += srcLine(it.r);
+  if(it.div) h += '<p class="dv"><b>Расхождение источников.</b> ' + esc(it.div) + '</p>';
+  if(done) h += '<span class="when num">выполнено ' + rel(done) + '</span>';
+  h += '</div></div>'; return h; }
+function det(id, def){ var o = S.open || {}; var v = (id in o) ? o[id] : def; return ' data-open="' + id + '"' + (v ? ' open' : ''); }
+function sigList(arr){ if(!arr || !arr.length) return '<p>Не указано в использованных источниках.</p>';
+  return '<ul class="sig">' + arr.map(function(s){ return '<li>' + esc(s.t) + srcLine(s.r) + '</li>'; }).join('') + '</ul>'; }
+function itemByKey(key){ var p = key.split(':');
+  if(p[0] === 'first') return {it: KB.first[+p[1]]};
+  if(p[0] === 'stop') return {it: KB.stop[+p[1]]};
+  if(p[0] === 'ar') return {it: KB.arrest[p[1]][+p[2]]};
+  if(p[0] === 'c'){ var c = CAUSE[p[1]]; return {it: c[p[2]][+p[3]], cause: c}; }
+  return {}; }
+
+/* ---------------- верхняя панель ---------------- */
+function barHtml(n, base){
+  if(!S.t0) return '<div class="idle"><b>Таймер не запущен: справочный режим</b>' + (base === 'start' ? '' : '<button class="mini b-red" data-a="start">Коллапс</button>') + '</div>';
+  var a = S.arrest, cells = [];
+  cells.push({l:'Коллапс', v:fmtDur(n - S.t0), c:''});
+  if(a){
+    var arEnd = a.ended || null;
+    cells.push({l: a.rosc ? 'ROSC' : (arEnd ? 'СЛР стоп' : 'Остановка'), v: fmtDur((a.rosc || arEnd || n) - a.start), c: a.rosc ? 'grn' : (arEnd ? '' : 'red')});
+    if(!a.rosc && !arEnd){ var rem = CYCLE - (n - a.cycle); cells.push({l:'Цикл', v: rem >= 0 ? fmtShort(rem) : '+' + fmtShort(-rem), c: rem <= 0 ? 'red' : (rem <= 10000 ? 'yel' : '')}); }
+    else cells.push({l:'Цикл', v:'—', c:''});
+    var last = a.adr.length ? a.adr[a.adr.length - 1] : null;
+    if(last){ var e = n - last; cells.push({l:'Адреналин', v:fmtShort(e), c: (a.rosc || arEnd) ? '' : (e >= 300000 ? 'red' : (e >= 180000 ? 'yel' : ''))}); }
+    else cells.push({l:'Адреналин', v:'—', c:''});
+  } else {
+    cells.push({l:'Остановка', v:'нет', c:''});
+    cells.push({l:'Срок', v: S.preg === 'ge20' ? '≥20' : (S.preg === 'lt20' ? '<20' : (S.preg === 'pp' ? 'п/р' : '?')), c: S.preg ? '' : 'yel'});
+    cells.push({l:'Масса', v: S.wt ? fmtNum(S.wt, 0) : '—', c:''});
+  }
+  return '<div class="cells">' + cells.map(function(c){ return '<div class="cell ' + c.c + '"><div class="lb">' + esc(c.l) + '</div><div class="vl num">' + esc(c.v) + '</div></div>'; }).join('') + '</div>';
+}
+
+/* ---------------- маршрутизация ---------------- */
+function curView(){ var h = (location.hash || '').replace(/^#\/?/, ''); return h || defaultView(); }
+function defaultView(){ if(!S.t0) return 'start'; if(S.arrest && !S.arrest.rosc && !S.arrest.ended) return 'arrest'; return S.view || 'first'; }
+function nav(v){ if(location.hash !== '#/' + v){ location.hash = '#/' + v; } else render(); }
+window.addEventListener('hashchange', function(){ render(); window.scrollTo(0, 0); });
+
+/* ---------------- экраны ---------------- */
+function vStart(){
+  return '<section class="start"><h1>Материнский коллапс</h1>' +
+    '<p class="lead">Беременность, роды и послеродовый период — от «внезапно стало плохо» до остановки кровообращения.</p>' +
+    '<button class="go" data-a="start">Коллапс<small>запустить таймер и журнал</small></button>' +
+    '<div class="stack" style="margin-top:14px"><button class="btn" data-a="nav" data-v="causes">Справочник причин без таймера<small>дифдиагностика, лечение, дозы</small></button></div>' +
+    '<p class="note">Данные хранятся только на этом устройстве и никуда не отправляются. Не вводите ФИО и другие персональные данные пациентки. Приложение не заменяет клиническое решение: дозы сверяйте с КР и инструкцией.</p></section>';
+}
+function pregHtml(){
+  var o = [['ge20', '≥20 нед', 'или дно ≥ пупка'], ['lt20', '<20 нед', 'дно ниже пупка'], ['pp', 'После родов', 'до 6 нед']];
+  return '<div class="seg">' + o.map(function(x){ return '<button class="btn' + (S.preg === x[0] ? ' on' : '') + '" data-a="preg" data-v="' + x[0] + '" aria-pressed="' + (S.preg === x[0]) + '">' + x[1] + '<small>' + x[2] + '</small></button>'; }).join('') + '</div>' +
+    '<p class="src"><b>Источник:</b> критерий перимортального КС — срок более 20 нед (КР ЭАЖ 2025, разд. 3.1, с. 18–19) или дно матки на уровне пупка и выше (AHA 2025); материнская остановка — в беременность и до 6 нед после родов (ERC 2025 SC).</p>';
+}
+function wtHtml(){ return '<div class="wt" style="margin:12px 0"><label for="wtIn"><b>Масса тела, кг</b> — оценка, для расчёта доз</label><input id="wtIn" class="num" inputmode="decimal" autocomplete="off" value="' + (S.wt ? fmtNum(S.wt, 1) : '') + '" placeholder="—"><button class="mini" data-a="wtset">Сохранить</button></div>'; }
+function vFirst(){
+  if(!S.t0) return vStart();
+  var h = '<h2>Первые действия</h2>';
+  h += '<div class="shift">Начало раньше: <button class="mini" data-a="shiftC" data-v="60000">−1 мин</button><button class="mini" data-a="shiftC" data-v="300000">−5 мин</button></div>';
+  h += '<h3>Срок и статус</h3>' + pregHtml();
+  h += wtHtml();
+  h += '<h3>ABCDE, помощь, доступы</h3>';
+  KB.first.forEach(function(it, i){ h += itemHtml(it, 'first:' + i); });
+  h += '<details' + det('stoplist', false) + '><summary>Остановить подозрительные препараты</summary><div class="in">';
+  KB.stop.forEach(function(it, i){ h += itemHtml(it, 'stop:' + i); });
+  h += '</div></details>';
+  return h;
+}
+function forkHtml(){ return '<div class="fork"><button class="btn b-blu" data-a="pulse">Пульс есть<small>причины и лечение</small></button><button class="btn b-red" data-a="nopulse">Пульса нет<small>начать СЛР</small></button></div>'; }
+
+function pmcdState(n){ var a = S.arrest, el = n - a.start; return el < PMCD_DEC ? 0 : (el < PMCD_GOAL ? 1 : 2); }
+function pmcdHtml(n){
+  var a = S.arrest;
+  if(S.preg === 'pp') return '<div class="pmcd"><div class="lbl">Перимортальное КС</div><div class="txt">не применимо: после родов</div></div>';
+  if(S.preg === 'lt20') return '<div class="pmcd"><div class="lbl">Перимортальное КС</div><div class="txt">срок &lt;20 нед: критерий не выполнен, продолжать СЛР</div></div>';
+  if(!S.preg) return '<div class="pmcd warn"><div class="lbl">Срок не указан</div><div class="txt">≥20 нед или дно матки ≥ пупка? Кнопки ниже</div></div>';
+  if(a.delivered) return '<div class="pmcd ok"><div class="lbl">Плод извлечён</div><div class="big num">' + fmtShort(a.delivered - a.start) + '</div><div class="sub">от начала остановки</div></div>';
+  if(a.rosc) return '<div class="pmcd"><div class="lbl">ROSC до родоразрешения</div><div class="txt">тактика индивидуальна</div></div>';
+  var st = pmcdState(n), el = n - a.start, cls, lbl, big, sub;
+  if(st === 0){ cls = 'warn'; lbl = 'До ПКС (4 мин)'; big = fmtShort(PMCD_DEC - el); sub = 'перимортальное КС: готовить набор на месте'; }
+  else if(st === 1){ cls = 'now pulse'; lbl = '4 мин: разрез'; big = fmtShort(PMCD_GOAL - el); sub = 'до 5-й мин — извлечь плод'; }
+  else { cls = 'now'; lbl = 'Больше 5 мин'; big = '+' + fmtShort(el - PMCD_GOAL); sub = 'извлечь плод немедленно'; }
+  return '<div class="pmcd ' + cls + '" id="pmcdBox" data-st="' + st + '"><div class="lbl">' + lbl + '</div><div class="big num" id="pmcdBig">' + big + '</div><div class="sub">' + sub + '</div></div>';
+}
+function pregAsk(){ if(S.preg) return '';
+  return '<div class="box" style="margin-top:0"><h3>Срок для решения о перимортальном КС</h3>' + pregHtml() + '</div>'; }
+function cycHtml(n){ var a = S.arrest; var rem = CYCLE - (n - a.cycle);
+  var cls = rem <= 0 ? 'now pulse' : (rem <= 10000 ? 'warn' : '');
+  return '<div class="cyc ' + cls + '" id="cycBox"><div class="lbl">' + (rem <= 0 ? 'Проверка ритма' : 'До проверки ритма') + '</div><div class="big num" id="cycBig">' + (rem >= 0 ? fmtShort(rem) : '+' + fmtShort(-rem)) + '</div><div class="sub">цикл 2 мин</div></div>'; }
+function promptsHtml(){ var a = S.arrest, p = [];
+  if(a.rosc || a.ended) return '';
+  if(a.rhythm === 'N' && !a.adr.length) p.push(['pr', 'Нешоковый ритм: адреналин 1 мг в/в — как можно раньше']);
+  if(a.shocks >= 3 && !a.adr.length) p.push(['pr', 'После 3-го разряда: адреналин 1 мг в/в']);
+  if(a.shocks >= 3 && !a.amio.length) p.push(['pr', 'После 3 разрядов: амиодарон 300 мг в/в']);
+  if(a.shocks >= 5 && a.amio.length === 1) p.push(['pr', 'После 5 разрядов: амиодарон 150 мг в/в']);
+  if(a.rhythm === 'S' && a.shocks >= 3) p.push(['py', 'Рефрактерная ФЖ: сменить вектор — передне-задняя позиция электродов']);
+  var last = a.adr.length ? a.adr[a.adr.length - 1] : null;
+  if(last){ var e = now() - last; if(e >= 300000) p.push(['pr', 'Адреналин: прошло ' + fmtShort(e) + ' — повторить']); else if(e >= 180000) p.push(['py', 'Адреналин: прошло ' + fmtShort(e) + ' — можно повторить (каждые 3–5 мин)']); }
+  if(S.preg === 'ge20' && !a.delivered) p.push(['pb', 'Смещение матки влево — непрерывно; датчики КТГ сняты']);
+  return '<div class="prompt" id="prompts">' + p.map(function(x){ return '<p class="' + x[0] + '">' + esc(x[1]) + '</p>'; }).join('') +
+    '<p class="src">Источник: ERC 2025 ALS (Vasopressor drugs; Antiarrhythmic drugs; Refractory VF); КР ЭАЖ 2025, разд. 3.1, с. 18–19</p></div>'; }
+function arDetails(skip){ var h = '';
+  var blocks = [['cpr', 'Качество СЛР у беременной', true], ['als', 'Ритмы, разряды, препараты (ALS)', false], ['pmcd', 'Перимортальное КС: сроки и расхождения', false], ['rosc', 'После ROSC', false], ['duration', 'Длительность реанимации', false]];
+  blocks.forEach(function(b){ if(b[0] === skip) return; h += '<details' + det('ar-' + b[0], b[2]) + '><summary>' + b[1] + '</summary><div class="in">';
+    KB.arrest[b[0]].forEach(function(it, i){ h += itemHtml(it, 'ar:' + b[0] + ':' + i); });
+    if(b[0] === 'pmcd') h += divTable(KB.divs[0]);
+    h += '</div></details>'; });
+  return h; }
+function vArrest(){
+  var n = now(), a = S.arrest;
+  if(!S.t0 || !a){
+    return '<h2>Остановка кровообращения</h2>' +
+      '<button class="btn b-red" style="min-height:120px;font-size:28px;text-align:center" data-a="nopulse">Пульса нет — начать СЛР<small>запустит таймер остановки, циклы по 2 мин и отсчёт перимортального КС</small></button>' +
+      (S.t0 ? '' : '<p class="note">Таймер коллапса тоже будет запущен.</p>') + arDetails();
+  }
+  var tail = '<div class="shift"><b>Остановка с ' + fmtClock(a.start) + '.</b> Началась раньше: <button class="mini" data-a="shiftA" data-v="30000">−30 с</button><button class="mini" data-a="shiftA" data-v="60000">−1 мин</button>' +
+    '<button class="mini' + (SET.voice ? ' on' : '') + '" data-a="voice" aria-pressed="' + SET.voice + '">Голос: ' + (SET.voice ? 'вкл' : 'выкл') + '</button></div>';
+  var h = '';
+  if(a.ended){ h += '<div class="pmcd"><div class="lbl">Реанимационные мероприятия прекращены в ' + rel(a.ended) + '</div></div>'; h += arDetails(); return h; }
+  if(a.rosc){
+    h += '<div class="rosc">ROSC в ' + rel(a.rosc) + ' (через ' + fmtDur(a.rosc - a.start) + ' от начала остановки)</div>';
+    if(S.preg === 'ge20' && !a.delivered) h += '<p class="note">ROSC до родоразрешения: акушерская тактика зависит от срока, дистресса плода, состояния матери и анестезиологической поддержки.</p>' + srcLine([{s:'aje', p:23, sec:'3.2'}, {s:'smfm'}]);
+    if(a.delivered) h += '<p class="note">Плод извлечён через ' + fmtDur(a.delivered - a.start) + ' от начала остановки.</p>';
+    h += '<button class="btn b-red" data-a="nopulse">Повторная остановка — СЛР<small>отсчёт остановки продолжится от первой</small></button>';
+    h += '<h3>После ROSC</h3>'; KB.arrest.rosc.forEach(function(it, i){ h += itemHtml(it, 'ar:rosc:' + i); });
+    return h + tail + arDetails('rosc');
+  }
+  h += '<div class="duo">' + pmcdHtml(n) + cycHtml(n) + '</div>';
+  h += pregAsk();
+  h += '<div class="grid2"><button class="btn b-red" data-a="rhythm" data-v="S"' + (a.rhythm === 'S' ? ' aria-pressed="true"' : '') + '>Шоковый<small>ФЖ / ЖТ без пульса</small></button>' +
+       '<button class="btn b-ink" data-a="rhythm" data-v="N"' + (a.rhythm === 'N' ? ' aria-pressed="true"' : '') + '>Нешоковый<small>асистолия / ЭАБП</small></button></div>';
+  h += '<button class="btn b-yel" data-a="shock" style="text-align:center;min-height:72px;font-size:24px">Разряд №' + (a.shocks + 1) + '<small>' + (a.shocks ? 'энергию можно увеличить; неизвестно — максимальная' : 'бифазный ≥150 Дж; пульсирующий 130–150 Дж') + '</small></button>';
+  var last = a.adr.length ? a.adr[a.adr.length - 1] : null;
+  var amioDose = a.amio.length === 0 ? 300 : (a.amio.length === 1 ? 150 : 0);
+  h += '<div class="grid2"><button class="btn b-blu" data-a="adr">Адреналин 1\u00a0мг<small id="adrInfo">' + (last ? ('№' + a.adr.length + ', ' + fmtShort(n - last) + ' назад') : 'ещё не вводился') + '</small></button>' +
+       (amioDose ? '<button class="btn b-blu" data-a="amio" data-v="' + amioDose + '">Амиодарон ' + amioDose + ' мг<small>' + (amioDose === 300 ? 'после 3 разрядов' : 'после 5 разрядов') + '</small></button>' : '<button class="btn" disabled>Амиодарон<small>введено 300 + 150 мг</small></button>') + '</div>';
+  var showDeliv = S.preg === 'ge20' && !a.delivered;
+  h += '<div class="grid2">' + (showDeliv ? '<button class="btn b-ink" data-a="deliv">Плод извлечён<small>отметить время</small></button>' : '<button class="btn" data-a="newcycle">Новый цикл<small>сбросить 2 мин</small></button>') +
+       '<button class="btn b-grn" data-a="rosc">ROSC<small>кровообращение восстановлено</small></button></div>';
+  h += promptsHtml();
+  var q = [['Интубация / НГВ', 'Интубация трахеи / надгортанный воздуховод'], ['Капнография', 'Капнография подключена'], ['В/в доступ', 'Венозный доступ выше диафрагмы'], ['Внутри\u00adкостный', 'Внутрикостный доступ'], ['Сняты датчики КТГ', 'Датчики КТГ сняты'], ['Стоп MgSO₄', 'Инфузия магния сульфата остановлена'],
+           ['Кальций в/в', 'Кальций в/в'], ['Липиды 20%', 'Липидная эмульсия 20% — болюс'], ['Тромболизис', 'Тромболизис'], ['ПМТ', 'Протокол массивной трансфузии активирован'], ['Лидокаин', 'Лидокаин в/в'], ['Инфузия', 'Инфузия кристаллоида (гиповолемия)']];
+  h += '<div class="grid3">' + q.map(function(x){ return '<button class="btn" data-a="qlog" data-v="' + esc(x[1]) + '">' + esc(x[0]) + '</button>'; }).join('') + '</div>';
+  h += '<div class="grid2">' + (showDeliv ? '<button class="btn" data-a="newcycle">Новый цикл<small>сбросить 2 мин</small></button>' : '<span></span>') + '<button class="btn" data-a="endres" id="endBtn">Прекратить реанимацию<small>нажать дважды</small></button></div>';
+  return h + tail + arDetails();
+}
+function vCauses(){
+  var flt = S.flt || 'all';
+  var h = '<h2>Причины коллапса</h2>';
+  var y = [], q = [];
+  KB.causes.forEach(function(c){ if(S.causes[c.id] === 'y') y.push(c.name); if(S.causes[c.id] === 'q') q.push(c.name); });
+  if(y.length) h += '<p class="sum">Подтверждено: ' + esc(y.join('; ')) + '</p>';
+  if(q.length) h += '<p class="sum">Под вопросом: ' + esc(q.join('; ')) + '</p>';
+  h += '<div class="chips"><button class="mini' + (flt === 'all' ? ' on' : '') + '" data-a="flt" data-v="all">Все</button>' +
+    KB.groups.map(function(g){ return '<button class="mini' + (flt === g.id ? ' on' : '') + '" data-a="flt" data-v="' + g.id + '">' + esc(g.name) + '</button>'; }).join('') + '</div>';
+  var order = {y:0, q:1, u:2, n:3};
+  var list = KB.causes.filter(function(c){ return flt === 'all' || c.grp === flt; }).slice();
+  list.sort(function(a, b){ return order[S.causes[a.id] || 'u'] - order[S.causes[b.id] || 'u'] || KB.causes.indexOf(a) - KB.causes.indexOf(b); });
+  list.forEach(function(c){ var st = S.causes[c.id] || '';
+    h += '<div class="cause ' + st + '"><button class="cn" data-a="nav" data-v="cause/' + c.id + '" aria-label="Открыть: ' + esc(c.name) + '"><span style="margin:0;font-size:inherit;font-weight:inherit"><b>' + esc(c.name) + '</b><span>' + esc(c.tags.join('; ')) + '</span></span><i aria-hidden="true">›</i></button>' + st3(c.id) + '</div>'; });
+  h += '<p class="src">Акушерские причины («4П» ERC 2025: преэклампсия/эклампсия, послеродовой сепсис, плацента/матка, перипартальная кардиомиопатия), AHA 2025 A–H, 4Г/4Т (ERC 2025). Дифдиагноз ЭАЖ — КР ЭАЖ 2025, с. 9–10, Прил. А3.2 (с. 46).</p>';
+  return h;
+}
+function st3(id, solo){ var st = S.causes[id] || '';
+  return '<div class="st3' + (solo ? ' solo' : '') + '"><button class="y' + (st === 'y' ? ' on' : '') + '" data-a="cst" data-v="' + id + ':y" aria-pressed="' + (st === 'y') + '">Подтверждено</button>' +
+    '<button class="q' + (st === 'q' ? ' on' : '') + '" data-a="cst" data-v="' + id + ':q" aria-pressed="' + (st === 'q') + '">Под вопросом</button>' +
+    '<button class="n' + (st === 'n' ? ' on' : '') + '" data-a="cst" data-v="' + id + ':n" aria-pressed="' + (st === 'n') + '">Исключено</button></div>'; }
+function vCause(id){
+  var c = CAUSE[id]; if(!c) return vCauses();
+  var h = '<button class="mini back" data-a="nav" data-v="causes">‹ Все причины</button>';
+  h += '<h2>' + esc(c.name) + '</h2><p class="src">' + esc(c.tags.join('; ')) + '. Отметка причины:</p>';
+  h += st3(id, true);
+  var hasCalc = c.tx.some(function(t){ return t.c && t.c.length; });
+  if(hasCalc) h += wtHtml();
+  h += '<h3>Лечение и действия</h3>';
+  var key = c.tx.filter(function(t){ return t.k; }).length;
+  c.tx.forEach(function(it, i){ if(it.k || !key) h += itemHtml(it, 'c:' + id + ':tx:' + i, c); });
+  var rest = c.tx.filter(function(t){ return !t.k; });
+  if(key && rest.length){ h += '<details' + det(id, false) + '><summary>Ещё действия и дозы (' + rest.length + ')</summary><div class="in">';
+    c.tx.forEach(function(it, i){ if(!it.k) h += itemHtml(it, 'c:' + id + ':tx:' + i, c); }); h += '</div></details>'; }
+  h += '<div class="box"><h3>Признаки «за»</h3>' + sigList(c.pro) + '</div>';
+  h += '<div class="box"><h3>Признаки «против» и что исключить</h3>' + sigList(c.contra) + '</div>';
+  h += '<div class="box"><h3>Проверить у постели</h3>' + sigList(c.check) + '</div>';
+  return h;
+}
+function logText(){
+  if(!S.t0) return 'Журнал пуст: таймер не запускался.';
+  var L = [];
+  L.push('Материнский коллапс — журнал событий');
+  L.push('Дата: ' + fmtDate(S.t0) + '. Начало (коллапс): ' + fmtClock(S.t0) + ' по часам устройства.');
+  L.push('Срок/статус: ' + (PREG_TXT[S.preg] || 'не указан'));
+  if(S.wt) L.push('Масса тела (оценка): ' + fmtNum(S.wt, 1) + ' кг');
+  L.push('Время: мин:сек от коллапса (часы:мин:сек).');
+  L.push('');
+  S.log.forEach(function(e){ L.push(rel(e.t) + ' (' + fmtClock(e.t) + ') ' + e.m); });
+  var a = S.arrest;
+  if(a){ L.push('');
+    var s = 'Остановка: начало ' + rel(a.start) + '; разрядов ' + a.shocks + '; адреналин ×' + a.adr.length + (a.amio.length ? ('; амиодарон ' + a.amio.map(function(x){ return x.d; }).join(' + ') + ' мг') : '');
+    if(a.delivered) s += '; плод извлечён ' + rel(a.delivered) + ' (через ' + fmtDur(a.delivered - a.start) + ' от начала остановки)';
+    if(a.rosc) s += '; ROSC ' + rel(a.rosc) + ' (через ' + fmtDur(a.rosc - a.start) + ')';
+    if(a.ended) s += '; реанимация прекращена ' + rel(a.ended);
+    L.push(s + '.'); }
+  var cs = KB.causes.filter(function(c){ return S.causes[c.id]; }).map(function(c){ return c.name + ' — ' + {y:'подтверждено', q:'под вопросом', n:'исключено'}[S.causes[c.id]]; });
+  if(cs.length){ L.push('Причины: ' + cs.join('; ') + '.'); }
+  L.push('');
+  L.push('Сформировано приложением «Материнский коллапс» ' + VERSION + '.');
+  return L.join('\n');
+}
+function vLog(){
+  if(!S.t0) return '<h2>Журнал</h2><p>Журнал начнётся после нажатия «Коллапс».</p>' + vStart();
+  var h = '<h2>Журнал событий</h2><p><b>Начало:</b> ' + fmtDate(S.t0) + ', ' + fmtClock(S.t0) + ' (часы устройства). Время — мин:сек от коллапса.</p>';
+  h += '<label for="noteIn"><b>Заметка</b> — без ФИО и персональных данных</label><textarea id="noteIn" placeholder="Например: вызван трансфузиолог"></textarea>';
+  h += '<div class="grid2"><button class="btn b-ink" data-a="note">Добавить заметку</button><button class="btn" data-a="undo" id="undoBtn">Отменить последнюю<small>нажать дважды</small></button></div>';
+  h += '<button class="btn b-blu" data-a="copy" style="text-align:center;min-height:68px">Копировать журнал текстом<small>для истории родов</small></button>';
+  h += '<div id="copyFallback"></div>';
+  h += '<ol class="log">' + S.log.map(function(e){ return '<li><span class="tm">' + rel(e.t) + '<span class="clk">' + fmtClock(e.t) + '</span></span><span>' + esc(e.m) + '</span></li>'; }).join('') + '</ol>';
+  h += '<button class="btn" data-a="reset" id="resetBtn" style="margin-top:20px">Завершить и очистить<small>журнал и отметки будут удалены с устройства; нажать дважды</small></button>';
+  return h;
+}
+function divTable(d){ return '<h3>' + esc(d.topic) + '</h3><table class="dvt">' + d.items.map(function(x){ return '<tr><td>' + esc(x[0]) + '</td><td>' + esc(x[1]) + '</td></tr>'; }).join('') + '</table>'; }
+function vMore(){
+  var h = '<h2>Настройки и источники</h2>';
+  h += '<div class="box"><h3>Тема</h3><div class="grid3">' + [['auto', 'Как в системе'], ['light', 'Светлая'], ['dark', 'Тёмная']].map(function(x){ return '<button class="btn' + (SET.theme === x[0] ? ' b-ink' : '') + '" data-a="theme" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+  h += '<h3>Звук</h3><div class="grid2"><button class="btn' + (SET.voice ? ' b-ink' : '') + '" data-a="voice">Голосовые подсказки: ' + (SET.voice ? 'вкл' : 'выкл') + '</button><button class="btn' + (SET.minute ? ' b-ink' : '') + '" data-a="minute">Время каждую минуту: ' + (SET.minute ? 'вкл' : 'выкл') + '</button></div>';
+  h += '<button class="btn" data-a="testvoice">Проверить голос и сигнал</button>';
+  h += '<p class="src">Хронометрист называет время каждую минуту — КР ЭАЖ 2025, Прил. Б1, с. 48. Голос: синтез речи телефона (русский голос должен быть установлен). При свёрнутом приложении подсказки могут не прозвучать — держите экран включённым.</p></div>';
+  if(S.t0) h += '<div class="box"><h3>Срок и масса</h3>' + pregHtml() + wtHtml() + '</div>';
+  h += '<details' + det('m-divs', false) + '><summary>Расхождения источников</summary><div class="in">' + KB.divs.map(divTable).join('') + '</div></details>';
+  h += '<details' + det('m-gaps', false) + '><summary>Где КР РОАГ молчат</summary><div class="in"><table class="dvt">' + KB.gaps.map(function(g){ return '<tr><td>' + esc(g[0]) + '</td><td>' + esc(g[1]) + '</td></tr>'; }).join('') + '</table></div></details>';
+  h += '<details' + det('m-src', false) + '><summary>Источники</summary><div class="in"><p class="src">Номер страницы КР — номер страницы PDF-файла в базе знаний проекта «КР РОАГ».</p><dl class="ref">' +
+    Object.keys(KB.sources).map(function(k){ var s = KB.sources[k]; return '<dt>' + esc(s.short) + '</dt><dd>' + esc(s.full) + '</dd>'; }).join('') + '</dl></div></details>';
+  h += '<div class="box"><h3>О приложении</h3><p>Версия ' + esc(VERSION) + '. Работает офлайн после первого открытия. Данные хранятся только в этом браузере (localStorage), никуда не передаются.</p>' +
+    '<p>Не заменяет клиническое решение и протоколы учреждения. Перед применением сверяйте дозы с КР и инструкцией к препарату.</p></div>';
+  return h;
+}
+
+function render(){
+  applyTheme();
+  var v = curView(), main = $('view'), html, fork = false;
+  var base = v.split('/')[0];
+  if(base === 'start') html = vStart();
+  else if(base === 'first'){ html = vFirst(); fork = !!S.t0; }
+  else if(base === 'arrest') html = vArrest();
+  else if(base === 'causes') html = vCauses();
+  else if(base === 'cause') html = vCause(v.split('/')[1]);
+  else if(base === 'log') html = vLog();
+  else if(base === 'more') html = vMore();
+  else html = vStart();
+  if(base !== 'start' && base !== 'cause' && S.t0 && S.view !== base){ S.view = base; save(); }
+  main.innerHTML = html;
+  main.className = fork ? 'withfork' : '';
+  $('forkHost').innerHTML = fork ? forkHtml() : '';
+  var tabs = document.querySelectorAll('#tabs button');
+  for(var i = 0; i < tabs.length; i++){ var tv = tabs[i].getAttribute('data-v'); var cur = (tv === base) || (tv === 'causes' && base === 'cause') || (tv === 'first' && base === 'start');
+    if(cur) tabs[i].setAttribute('aria-current', 'page'); else tabs[i].removeAttribute('aria-current'); }
+  $('bar').innerHTML = barHtml(now(), base);
+  var d = document.querySelectorAll('details[data-open]');
+  for(var j = 0; j < d.length; j++){ d[j].addEventListener('toggle', function(e){ var id = e.target.getAttribute('data-open'); S.open = S.open || {}; S.open[id] = e.target.open; save(); }); }
+}
+
+/* ---------------- тик: таймеры и сигналы ---------------- */
+function due(key, at, n, fn){ if(n >= at && !S.fired[key]){ S.fired[key] = 1; if(n - at < 6000) fn(); return true; } return false; }
+function checkAlerts(n){
+  var a = S.arrest; if(!a || a.rosc || a.ended) return;
+  var msgs = [], dirty = false, m = Math.floor((n - a.start) / 60000);
+  var pmcdOn = S.preg === 'ge20' && !a.delivered;
+  if(pmcdOn){
+    dirty = due('p3:' + a.start, a.start + 180000, n, function(){ msgs.push('Три минуты остановки. Через минуту — кесарево сечение.'); }) || dirty;
+    dirty = due('p4:' + a.start, a.start + PMCD_DEC, n, function(){ msgs.push('Четыре минуты. Начать кесарево сечение.'); beep(4); vib(); }) || dirty;
+    dirty = due('p5:' + a.start, a.start + PMCD_GOAL, n, function(){ msgs.push('Пять минут остановки. Извлечь плод.'); beep(2); }) || dirty;
+  }
+  if(SET.minute && m >= 1 && !(pmcdOn && m >= 3 && m <= 5)){
+    dirty = due('m' + m + ':' + a.start, a.start + m * 60000, n, function(){ msgs.unshift('Остановка: ' + minWord(m) + '.'); }) || dirty;
+  } else if(m >= 1){ S.fired['m' + m + ':' + a.start] = 1; }
+  dirty = due('c10:' + a.cycle, a.cycle + CYCLE - 10000, n, function(){ msgs.push('Десять секунд до проверки ритма. Зарядить дефибриллятор.'); }) || dirty;
+  dirty = due('c0:' + a.cycle, a.cycle + CYCLE, n, function(){ msgs.push('Проверка ритма. Смена компрессора.'); beep(3); vib(); }) || dirty;
+  var last = a.adr.length ? a.adr[a.adr.length - 1] : null;
+  if(last){
+    dirty = due('a3:' + last, last + 180000, n, function(){ msgs.push('Три минуты после адреналина.'); }) || dirty;
+    dirty = due('a5:' + last, last + 300000, n, function(){ msgs.push('Пять минут после адреналина. Повторить адреналин.'); beep(2); }) || dirty;
+  }
+  if(dirty) save();
+  if(msgs.length) speak(msgs.join(' '));
+}
+var lastArrestRender = 0;
+function tick(){
+  var n = now();
+  if(S.t0) $('bar').innerHTML = barHtml(n, curView().split('/')[0]);
+  var v = curView().split('/')[0];
+  if(v === 'arrest' && S.arrest && !S.arrest.rosc && !S.arrest.ended){
+    var a = S.arrest, rem = CYCLE - (n - a.cycle), cb = $('cycBig'), box = $('cycBox');
+    if(cb){ cb.textContent = rem >= 0 ? fmtShort(rem) : '+' + fmtShort(-rem); var cc = 'cyc ' + (rem <= 0 ? 'now pulse' : (rem <= 10000 ? 'warn' : '')); if(box.className !== cc) box.className = cc; box.querySelector('.lbl').textContent = rem <= 0 ? 'Проверка ритма' : 'До проверки ритма'; }
+    var pb = $('pmcdBox');
+    if(pb && S.preg === 'ge20' && !a.delivered){ var el = n - a.start, st = pmcdState(n);
+      if(pb.getAttribute('data-st') !== String(st)){ var tmp2 = document.createElement('div'); tmp2.innerHTML = pmcdHtml(n); pb.replaceWith(tmp2.firstChild); }
+      else $('pmcdBig').textContent = st === 0 ? fmtShort(PMCD_DEC - el) : (st === 1 ? fmtShort(PMCD_GOAL - el) : '+' + fmtShort(el - PMCD_GOAL)); }
+    var ai = $('adrInfo'); var last = a.adr.length ? a.adr[a.adr.length - 1] : null; if(ai && last) ai.textContent = '№' + a.adr.length + ', ' + fmtShort(n - last) + ' назад';
+    if(n - lastArrestRender > 15000){ var pr = $('prompts'); if(pr){ var tmp = document.createElement('div'); tmp.innerHTML = promptsHtml(); if(tmp.firstChild) pr.replaceWith(tmp.firstChild); } lastArrestRender = n; }
+  }
+  checkAlerts(n);
+}
+
+/* ---------------- действия ---------------- */
+function startSession(){ if(S.t0) return; var t = now(); var keep = {preg:S.preg, wt:S.wt}; S = blank(); S.t0 = t; S.view = 'first'; S.preg = keep.preg; S.wt = keep.wt;
+  S.log.push({t:t, m:'Коллапс: запущен таймер', u:null});
+  if(S.preg) S.log.push({t:t, m:'Срок/статус: ' + PREG_TXT[S.preg], u:null});
+  if(S.wt) S.log.push({t:t, m:'Масса тела (оценка): ' + fmtNum(S.wt, 1) + ' кг', u:null});
+  save(); unlock(); keepAwake(); speak('Таймер запущен.'); }
+function startArrest(){ if(!S.t0) startSession(); var t = now();
+  if(!S.arrest){ S.arrest = {start:t, cycle:t, rhythm:null, shocks:0, adr:[], amio:[], rosc:null, delivered:null, ended:null}; addLog('Пульса нет: остановка кровообращения, начата СЛР', {k:'arrest'}); speak('Начата сердечно-лёгочная реанимация.'); }
+  else if(S.arrest.rosc || S.arrest.ended){ var prev = {rosc:S.arrest.rosc, ended:S.arrest.ended, cycle:S.arrest.cycle}; S.arrest.rosc = null; S.arrest.ended = null; S.arrest.cycle = t; addLog('Повторная остановка: СЛР возобновлена', {k:'rearrest', prev:prev}); }
+  save(); }
+var armed = {};
+function arm(id, ms){ var t = now(); if(armed[id] && t - armed[id] < (ms || 4000)){ armed[id] = 0; return true; } armed[id] = t; return false; }
+var A = {
+  start: function(){ unlock(); startSession(); nav('first'); },
+  nav: function(v){ nav(v); },
+  pulse: function(){ addLog('Пульс есть: дифдиагностика причин'); nav('causes'); },
+  nopulse: function(){ unlock(); startArrest(); nav('arrest'); render(); },
+  preg: function(v){ var prev = S.preg; if(prev === v) return; S.preg = v; save();
+    if(S.t0) addLog('Срок/статус: ' + PREG_TXT[v], {k:'preg', prev:prev}); render(); },
+  wtset: function(){ var el = $('wtIn'); if(!el) return; var v = parseFloat(String(el.value).replace(',', '.'));
+    if(!(v >= 30 && v <= 250)){ toast('Масса: введите число от 30 до 250 кг'); return; }
+    var nv = Math.round(v * 10) / 10; if(nv === S.wt) return; var prev = S.wt; S.wt = nv; save(); if(S.t0) addLog('Масса тела (оценка): ' + fmtNum(S.wt, 1) + ' кг', {k:'wt', prev:prev}); else toast('Масса сохранена: ' + fmtNum(S.wt, 1) + ' кг'); render(); },
+  shiftC: function(v){ if(!S.t0) return; var ms = +v; S.t0 -= ms; addLog('Начало коллапса указано на ' + fmtShort(ms) + ' раньше нажатия', {k:'shiftC', ms:ms}); render(); },
+  shiftA: function(v){ var a = S.arrest; if(!a) return; var ms = +v; a.start -= ms; addLog('Начало остановки указано на ' + fmtShort(ms) + ' раньше', {k:'shiftA', ms:ms}); render(); },
+  done: function(key){ var r = itemByKey(key); if(!r.it) return; var pre = r.cause ? ('[' + r.cause.name + '] ') : '';
+    if(S.done[key]){ var prev = S.done[key]; delete S.done[key]; addLog('Отметка снята: ' + pre + (r.it.log || r.it.t), {k:'undone', key:key, prev:prev}); }
+    else { var t = addLog(pre + (r.it.log || r.it.t), {k:'done', key:key}); S.done[key] = t; save(); }
+    render(); },
+  cst: function(v){ var p = v.split(':'), id = p[0], st = p[1], c = CAUSE[id], prev = S.causes[id] || null;
+    if(prev === st){ delete S.causes[id]; if(S.t0) addLog('Причина «' + c.name + '»: отметка снята', {k:'cst', id:id, prev:prev}); }
+    else { S.causes[id] = st; if(S.t0) addLog('Причина «' + c.name + '»: ' + {y:'подтверждено', q:'под вопросом', n:'исключено'}[st], {k:'cst', id:id, prev:prev}); }
+    save(); render(); },
+  flt: function(v){ S.flt = v; save(); render(); },
+  rhythm: function(v){ var a = S.arrest; if(!a) return; var prev = {rhythm:a.rhythm, cycle:a.cycle};
+    a.rhythm = v; if(v === 'N') a.cycle = now();
+    addLog(v === 'S' ? 'Ритм: ФЖ/ЖТ без пульса (шоковый)' : 'Ритм: асистолия/ЭАБП (нешоковый), новый цикл СЛР', {k:'rhythm', prev:prev});
+    if(v === 'N' && !a.adr.length) speak('Нешоковый ритм. Адреналин один миллиграмм как можно раньше.');
+    if(v === 'S') speak('Шоковый ритм. Разряд, затем сразу компрессии.');
+    render(); },
+  shock: function(){ var a = S.arrest; if(!a) return; var prev = {cycle:a.cycle, rhythm:a.rhythm}; a.shocks++; a.rhythm = 'S'; a.cycle = now();
+    addLog('Разряд №' + a.shocks + ', СЛР 2 мин', {k:'shock', prev:prev});
+    if(a.shocks === 3) speak('Третий разряд. Адреналин один миллиграмм и амиодарон триста миллиграмм.');
+    if(a.shocks === 5) speak('Пятый разряд. Амиодарон сто пятьдесят миллиграмм.');
+    render(); },
+  adr: function(){ var a = S.arrest; if(!a) return; a.adr.push(now()); addLog('Адреналин 1 мг в/в (№' + a.adr.length + ')', {k:'adr'}); render(); },
+  amio: function(v){ var a = S.arrest; if(!a) return; a.amio.push({t:now(), d:+v}); addLog('Амиодарон ' + v + ' мг в/в', {k:'amio'}); render(); },
+  newcycle: function(){ var a = S.arrest; if(!a) return; var prev = {cycle:a.cycle}; a.cycle = now(); addLog('Новый цикл СЛР 2 мин', {k:'cycle', prev:prev}); render(); },
+  rosc: function(){ var a = S.arrest; if(!a) return; a.rosc = now(); addLog('ROSC: кровообращение восстановлено', {k:'rosc'}); speak('Восстановление кровообращения.'); render(); },
+  deliv: function(){ var a = S.arrest; if(!a || a.delivered) return; a.delivered = now(); addLog('Плод извлечён через ' + fmtDur(a.delivered - a.start) + ' от начала остановки', {k:'deliv'}); render(); },
+  endres: function(){ var a = S.arrest; if(!a) return; if(!arm('end')){ var b = $('endBtn'); if(b) b.innerHTML = 'Нажмите ещё раз<small>для подтверждения</small>'; return; }
+    a.ended = now(); addLog('Реанимационные мероприятия прекращены', {k:'ended'}); render(); },
+  qlog: function(v){ addLog(v); },
+  note: function(){ var el = $('noteIn'); var v = el ? el.value.trim() : ''; if(!v){ toast('Заметка пустая'); return; } addLog('Заметка: ' + v); render(); },
+  copy: function(){ var txt = logText(); var ok = function(){ S.copied = S.log.length; save(); toast('Журнал скопирован'); };
+    var fb = function(){ var ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+      var res = false; try{ res = document.execCommand('copy'); }catch(e){} document.body.removeChild(ta);
+      if(res) ok(); else { var h = $('copyFallback'); if(h){ h.innerHTML = '<p><b>Автокопирование недоступно.</b> Выделите текст и скопируйте вручную:</p><textarea class="fallback" readonly>' + esc(txt) + '</textarea>'; var t2 = h.querySelector('textarea'); t2.focus(); t2.select(); } } };
+    try{ if(navigator.clipboard && window.isSecureContext){ navigator.clipboard.writeText(txt).then(ok, fb); } else fb(); }catch(e){ fb(); } },
+  undo: function(){ if(!S.log.length) return; if(!arm('undo')){ var b = $('undoBtn'); if(b) b.innerHTML = 'Нажмите ещё раз<small>удалить: ' + esc(S.log[S.log.length - 1].m.slice(0, 40)) + '</small>'; return; }
+    var e = S.log[S.log.length - 1]; if(S.log.length === 1){ toast('Первую запись не удалить — используйте «Завершить и очистить»'); return; }
+    S.log.pop(); revert(e.u); save(); toast('Удалено: ' + e.m); render(); },
+  reset: function(){ var b = $('resetBtn'); if(!arm('reset', 5000)){ if(b) b.innerHTML = 'Нажмите ещё раз — удалить<small>' + (S.copied === S.log.length ? 'журнал скопирован' : 'журнал НЕ скопирован после последней записи') + '</small>'; return; }
+    S = blank(); save(); try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){} nav('start'); },
+  theme: function(v){ SET.theme = v; saveSet(); render(); },
+  voice: function(){ SET.voice = !SET.voice; saveSet(); if(SET.voice){ unlock(); speak('Голосовые подсказки включены.'); } render(); },
+  minute: function(){ SET.minute = !SET.minute; saveSet(); render(); },
+  testvoice: function(){ unlock(); beep(2); vib(); var was = SET.voice; SET.voice = true; speak('Проверка голоса. Проверка ритма через десять секунд.'); SET.voice = was; }
+};
+function revert(u){ if(!u) return; var a = S.arrest;
+  switch(u.k){
+    case 'done': delete S.done[u.key]; break;
+    case 'undone': S.done[u.key] = u.prev; break;
+    case 'cst': if(u.prev) S.causes[u.id] = u.prev; else delete S.causes[u.id]; break;
+    case 'preg': S.preg = u.prev; break;
+    case 'wt': S.wt = u.prev; break;
+    case 'shiftC': S.t0 += u.ms; break;
+    case 'shiftA': if(a) a.start += u.ms; break;
+    case 'arrest': S.arrest = null; break;
+    case 'rearrest': if(a){ a.rosc = u.prev.rosc; a.ended = u.prev.ended; a.cycle = u.prev.cycle; } break;
+    case 'rhythm': if(a){ a.rhythm = u.prev.rhythm; a.cycle = u.prev.cycle; } break;
+    case 'shock': if(a){ a.shocks = Math.max(0, a.shocks - 1); a.cycle = u.prev.cycle; a.rhythm = u.prev.rhythm; } break;
+    case 'adr': if(a) a.adr.pop(); break;
+    case 'amio': if(a) a.amio.pop(); break;
+    case 'cycle': if(a) a.cycle = u.prev.cycle; break;
+    case 'rosc': if(a) a.rosc = null; break;
+    case 'deliv': if(a) a.delivered = null; break;
+    case 'ended': if(a) a.ended = null; break;
+  } }
+document.addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('[data-a]') : null; if(!b) return;
+  var f = A[b.getAttribute('data-a')]; if(f){ e.preventDefault(); f(b.getAttribute('data-v'), b); } });
+document.addEventListener('keydown', function(e){ if(e.key === 'Enter' && e.target && e.target.id === 'wtIn'){ A.wtset(); } });
+document.addEventListener('change', function(e){ if(e.target && e.target.id === 'wtIn' && String(e.target.value).trim()) A.wtset(); });
+
+/* ---------------- PWA: манифест, иконка, service worker ---------------- */
+function icon(size){ try{ var c = document.createElement('canvas'); c.width = c.height = size; var g = c.getContext('2d'); if(!g) return null;
+  g.fillStyle = '#b3001b'; g.fillRect(0, 0, size, size); g.fillStyle = '#ffffff'; var u = size / 8;
+  g.fillRect(u * 3.1, u * 1.4, u * 1.8, u * 5.2); g.fillRect(u * 1.4, u * 3.1, u * 5.2, u * 1.8); return c.toDataURL('image/png'); }catch(e){ return null; } }
+function pwa(){
+  try{ var i192 = icon(192), i512 = icon(512);
+    var base = location.href.split('#')[0];
+    var man = {name:'Материнский коллапс', short_name:'Коллапс', start_url: base, scope: base.replace(/[^\/]*$/, ''), display:'standalone', background_color:'#000000', theme_color:'#000000', lang:'ru',
+      icons: i192 ? [{src:i192, sizes:'192x192', type:'image/png'}, {src:i512, sizes:'512x512', type:'image/png', purpose:'any maskable'}] : []};
+    $('manifestLink').setAttribute('href', 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(man)));
+    if(i192) $('appleIcon').setAttribute('href', i192);
+  }catch(e){}
+  try{ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){ navigator.serviceWorker.register('sw.js').catch(function(){}); } }catch(e){}
+}
+
+/* ---------------- запуск ---------------- */
+window.__mcTick = tick; window.__mcState = function(){ return S; }; window.__mcLogText = logText; window.__mcRender = render;
+render(); pwa(); keepAwake();
+setInterval(tick, 250);
+try{ if(window.speechSynthesis && window.speechSynthesis.addEventListener) window.speechSynthesis.addEventListener('voiceschanged', function(){}); }catch(e){}
+document.addEventListener('pointerdown', function once(){ unlock(); document.removeEventListener('pointerdown', once); });
+})();
+</script>
+</body>
+</html>
